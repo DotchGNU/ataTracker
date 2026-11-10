@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ataagent"
+version = "0.1.0"
+description = "ataAgent: asphyxia twitching analysis from DeepLabCut pose tracks: video cropping, labelling, fine-tuning, motion signals, HMM phase segmentation, review pages and figures."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [{ name = "Geun-Woo D. Kim" }]
+keywords = ["DeepLabCut", "pose estimation", "behaviour", "hidden Markov model", "twitching", "asphyxia"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "hmmlearn>=0.3.3",
+    "matplotlib>=3.7",
+    "PyYAML>=6.0",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# DeepLabCut runs in its own Python 3.7 / TensorFlow environment (environment-dlc.yml);
+# this extra only documents the pinned version and is not installable next to the analysis stack.
+dlc = ["deeplabcut==2.2.3"]
+figures = ["openpyxl>=3.1"]
+test = ["pytest>=7", "ruff>=0.4"]
+
+[project.urls]
+Homepage = "https://github.com/myLabTechnician/ataAgent"
+Documentation = "https://github.com/myLabTechnician/ataAgent/tree/main/docs"
+Issues = "https://github.com/myLabTechnician/ataAgent/issues"
+Changelog = "https://github.com/myLabTechnician/ataAgent/blob/main/CHANGELOG.md"
+
+[project.scripts]
+ata = "ataagent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"ataagent" = ["templates/*.html", "data/*.xml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY", "C4", "SIM"]
+ignore = ["SIM108", "C408"]   # dict(...) calls are kept for keyword-style records
+
+[tool.ruff.lint.per-file-ignores]
+# executed by the Python 3.7 DeepLabCut interpreter: keep 3.7-compatible idioms
+"src/ataagent/dlc/runner.py" = ["UP"]

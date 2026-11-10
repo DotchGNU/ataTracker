@@ -1,0 +1,138 @@
+# ataAgent default configuration. Replace every /path/to/... placeholder.
+output_dir: /path/to/output   # default parent folder of step outputs (each step can also take --out)
+signal:   # per-frame motion signal and peak calling (docs/method.md section 2)
+  fps: 30000/1001   # frames/s; a number or a ratio string such as "30000/1001"
+  chest_bodypart: CHEST
+  head_bodypart: HEAD
+  chest_mode: y   # step signal of the chest point: y | x | xy | max | pca
+  head_mode: max   # step signal of the head point: y | x | xy | max | pca
+  likelihood_min: 0.9   # frames (and the next frame) with likelihood below this are masked; 0 = no mask
+  norm_percentile: 99.9   # percentile of the step distribution mapped to amplitude 1
+  peak_threshold: 0.5   # minimum normalised peak height
+  peak_distance_chest_frames: 4   # minimum distance between chest peaks (frames)
+  peak_distance_head_frames: 24   # minimum distance between head peaks (frames)
+phase:   # 4-state left-to-right Poisson HMM pre -> chest -> head -> post (docs/method.md section 3)
+  bin_s: 1.0   # count bin width (s)
+  hmm_n_iter: 50   # maximum EM iterations
+  hmm_tol: 0.0001   # EM convergence tolerance (log-likelihood gain)
+  random_seed: 0   # random_state of the HMM
+  start_prob: [0.6, 0.4, 0.0, 0.0]   # initial start probabilities (pre, chest, head, post)
+  stay_prob: 0.99   # initial probability to stay in a state
+  move_prob: 0.01   # initial probability to move one state forward
+  lambda_floor: 0.01   # lower bound of the initial Poisson rates (peaks/bin)
+  empty_state_rate: 0.1   # initial rate of a state that no initial path visits
+  chest_onset_min_peaks: 5   # initial paths: chest state starts at the first window with this many chest peaks
+  chest_onset_window_s: 5.0   # window of that rule (s)
+  rule_bin_s: 10.0   # initial paths: bin of the head-onset rule (s)
+  rule_max_s: 300.0   # initial paths: last bin edge of the rule (s)
+  leave_one_out: true   # a target that is also a reference recording is segmented by a model trained without it
+end_line:   # end line = last time the rolling max of the head amplitude >= threshold (docs/method.md section 4)
+  threshold: 0.15
+  window_s: 5.0   # rolling-max window (s, centred)
+  search_after_post_s: 40.0   # search up to the HMM post onset (or recording end) plus this (s)
+display:   # display-only traces (never used for counting)
+  gate_tau_s: 3.0   # soft gate of the head trace before the head onset (s)
+  gate_floor: 0.0   # head trace multiplier long before the onset
+  post_chest_level: 0.03   # chest trace level after the end line
+  post_head_level: 0.015   # head trace level after the end line
+quality:   # label-free tracking metrics (docs/method.md section 6)
+  body_length_z: 4.0   # robust z of the head-chest distance counted as a violation
+  head_jump_px: 15.0   # head step counted as a jump (px)
+  likelihood_low: 0.5   # likelihood counted as low
+  end_vs_manual_flag_s: 60.0   # flag |end line - manual last twitching| above this (s)
+inputs:   # coordinate tables (DeepLabCut csv)
+  reference_dir: /path/to/reference_coords   # recordings that train the HMM
+  coord_sets:   # one entry per checkpoint; the first set is the default for every animal
+  - {tag: default, dir: /path/to/coords}
+  coord_glob: '*DLC_*.csv'   # file pattern of the coordinate files
+  reference_glob: null   # file pattern in reference_dir (null = coord_glob)
+  name_separator: DLC_   # animal name = file name before this text
+  checkpoint_choice: null   # optional csv animal,checkpoint_tag (ata review choices); listed animals use that set
+  groups_csv: null   # optional csv animal,group (figures, review)
+  manual_csv: null   # optional csv animal,manual_last_s (manual last twitching, s)
+  video_dir: null   # videos for the viewer
+  video_suffix: .mp4
+  screen_animals: []   # animals of the checkpoint screen (empty = all animals of the first set)
+figures:   # 300-dpi transparent PNG + SVG + source csv for every plot
+  dpi: 300
+  font_family: Arial
+  font_files: []   # font files to register (e.g. a system Arial)
+  xmax_min: 6.2   # minimum x range of the twitching plots (min)
+  chest_color: '#002060'
+  head_color: '#C00000'
+  onset_marker_color: '#1f2a6b'
+  end_marker_color: '#C00000'
+  group_order: []   # display order of groups (others follow)
+  jitter_seed: 0
+  stack_xmax_min: 6.0
+  stack_plot_w_in: 4.8
+  stack_row_h_in: 0.24
+  stack_label_w_in: 0.75
+  stack_group_gap_in: 0.55
+  stack_svg_bins: 0   # 0 = full resolution; N = keep the max of each of N x bins (smaller SVG, same filled envelope)
+  stack_head_gate: true   # true = head display trace with the soft onset gate
+  xlsx_bar_colors: [7D9AB4, E57D7D]
+  xlsx_plot_w_in: 4.8
+  xlsx_jitter_span: 0.34
+crop:   # raw video -> fixed-size crops (ffmpeg)
+  batch: batch   # name of the crop batch shown in the tool
+  raw_dir: /path/to/raw_videos
+  reference_dir: null   # recordings that train the HMM
+  out_dir: /path/to/cropped_videos
+  tool_dir: /path/to/crop_tool
+  raw_patterns: ['*.MP4', '*.mp4']
+  exclude: []
+  out_w: 480
+  out_h: 272
+  crop_w: 925   # minimum crop width in raw px (keeps the pixel scale across batches)
+  crf: 18
+  ffmpeg: ffmpeg
+  ffprobe: ffprobe
+  server_port: 8765
+  url_path_map: {}   # rewrite path prefixes in file URLs, e.g. {"/data/": "D:/data/"}
+  detect_fps: 3.0
+  detect_w: 480
+  detect_h: 270
+  reference_frame_s: 20.0
+  suggest_step_s: 20.0
+  suggest_reference_times_s: [10.0, 30.0, 60.0]
+  suggest_scales_w: [90, 120, 150, 180, 210, 240, 270]
+  suggest_top: 3
+label:   # frames for the browser labeller
+  n_uniform: 15
+  n_outlier: 15
+  min_gap_s: 3.0
+  edge_s: 5.0
+  scorer: scorer   # DeepLabCut scorer name written into the labels
+  convention: 'CHEST = centre of the back, HEAD = nose tip. Decide once and keep it for every video.'
+  store_key: ata-labels
+dlc:   # DeepLabCut (run in the DeepLabCut environment, environment-dlc.yml)
+  project_config: /path/to/project/config.yaml
+  shuffle: 1
+  gputouse: null   # GPU index; null lets DeepLabCut choose
+  save_as_csv: true
+  video_extensions: [.mp4, .MP4, .avi, .AVI]
+  python: python   # Python interpreter of the DeepLabCut environment
+  finetune:   # continue training from a snapshot
+    init_weights: /path/to/dlc-models/iteration-0/train/snapshot-350000   # snapshot prefix to start from (without .index)
+    new_iteration: 1
+    lr_schedule: [[0.001, 10000], [0.0005, 20000], [0.0001, 30000]]   # [learning rate, until step]; steps count from the loaded snapshot
+    max_iters: 30000   # training steps after the loaded snapshot
+    save_every: 5000
+    display_every: 500
+    keep_snapshots: 7
+    net_type: resnet_50
+    augmenter: default
+    train_fraction: null   # null keeps the base project's TrainingFraction
+    pseudo_likelihood_min: 0.9
+  screen: []   # snapshots to screen: list of {family, project_config, iteration, steps}
+grid:   # optional settings search (ata evaluate grid)
+  modes: [y, x, xy, max, pca]
+  peak_thresholds: [0.3, 0.4, 0.5]
+  norm_percentiles: [99.0, 99.5, 99.9]
+  likelihood_mins: [0.0, 0.5, 0.9]
+  end_thresholds: [0.1, 0.15, 0.2, 0.3]
+  end_windows_s: [3.0, 5.0, 8.0]
+  min_head_peaks: 10
+  onset_agreement_min: 0.3
+  compare_sets: []   # two coordinate-set tags whose head onsets are compared (empty = first two sets)
