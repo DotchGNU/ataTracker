@@ -1,0 +1,20 @@
+# Analysis environment (signals, HMM phases, review pages, figures). Versions used for the
+# validation in docs/validation.md. ffmpeg is needed only for the crop and label steps.
+name: ata-analysis
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy=2.4.6
+  - scipy=1.17.1
+  - pandas=3.1.1
+  - hmmlearn=0.3.3
+  - scikit-learn=1.9.1
+  - matplotlib=3.11.2
+  - openpyxl=3.1.5
+  - pyyaml
+  - pillow
+  - ffmpeg=6.1.1
+  - pip
+  - pip:
+      - -e .[figures,test]
