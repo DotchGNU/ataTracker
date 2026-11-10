@@ -40,10 +40,10 @@ figures = ["openpyxl>=3.1"]
 test = ["pytest>=7", "ruff>=0.4"]
 
 [project.urls]
-Homepage = "https://github.com/myLabTechnician/ataAgent"
-Documentation = "https://github.com/myLabTechnician/ataAgent/tree/main/docs"
-Issues = "https://github.com/myLabTechnician/ataAgent/issues"
-Changelog = "https://github.com/myLabTechnician/ataAgent/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/DotchGNU/ataAgent"
+Documentation = "https://github.com/DotchGNU/ataAgent/tree/main/docs"
+Issues = "https://github.com/DotchGNU/ataAgent/issues"
+Changelog = "https://github.com/DotchGNU/ataAgent/blob/main/CHANGELOG.md"
 
 [project.scripts]
 ata = "ataagent.cli:main"

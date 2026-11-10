@@ -52,7 +52,7 @@ with commands: [docs/workflow.md](docs/workflow.md).
 Two environments: DeepLabCut needs Python 3.7 and TensorFlow; the analysis needs Python >= 3.10.
 
 ```bash
-git clone https://github.com/myLabTechnician/ataAgent.git
+git clone https://github.com/DotchGNU/ataAgent.git
 cd ataAgent
 conda env create -f environment-analysis.yml      # ata-analysis: the `ata` command
 conda env create -f environment-dlc.yml           # ata-dlc: DeepLabCut 2.2.3 (only for the DeepLabCut steps)
@@ -166,4 +166,4 @@ DeepLabCut (LGPL-3.0) and ffmpeg (GPL-2.0-or-later build) are not included in th
 they are installed separately and called at run time.
 
 Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · Changes: [CHANGELOG.md](CHANGELOG.md) ·
-Issues: <https://github.com/myLabTechnician/ataAgent/issues>
+Issues: <https://github.com/DotchGNU/ataAgent/issues>

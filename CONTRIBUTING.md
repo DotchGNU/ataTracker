@@ -1,6 +1,6 @@
 # Contributing
 
-Repository: <https://github.com/myLabTechnician/ataAgent>. Bug reports and pull requests go to
+Repository: <https://github.com/DotchGNU/ataAgent>. Bug reports and pull requests go to
 the issue tracker of that repository.
 
 ## Coding standards
