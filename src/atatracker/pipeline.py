@@ -17,7 +17,7 @@ from .evaluate.metrics import FLAG_METRICS, flag_against_reference, quality_metr
 from .phase import PhaseModel, PhaseResult, fit_model, segment
 from .signal import Signals, compute_signals
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 @dataclass

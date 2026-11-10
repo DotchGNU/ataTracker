@@ -23,7 +23,7 @@ import pandas as pd
 from .config import DisplayConfig, EndLineConfig, PhaseConfig
 from .signal import Signals
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 K = 4  # states: 0 pre, 1 chest, 2 head, 3 post
 STATE_NAMES = ("pre", "chest", "head", "post")
 

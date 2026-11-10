@@ -3,9 +3,9 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ataagent"
+name = "atatracker"
 version = "0.1.0"
-description = "ataAgent: asphyxia twitching analysis from DeepLabCut pose tracks: video cropping, labelling, fine-tuning, motion signals, HMM phase segmentation, review pages and figures."
+description = "ataTracker: asphyxia twitching analysis from DeepLabCut pose tracks: video cropping, labelling, fine-tuning, motion signals, HMM phase segmentation, review pages and figures."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-only"
@@ -40,19 +40,19 @@ figures = ["openpyxl>=3.1"]
 test = ["pytest>=7", "ruff>=0.4"]
 
 [project.urls]
-Homepage = "https://github.com/DotchGNU/ataAgent"
-Documentation = "https://github.com/DotchGNU/ataAgent/tree/main/docs"
-Issues = "https://github.com/DotchGNU/ataAgent/issues"
-Changelog = "https://github.com/DotchGNU/ataAgent/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/DotchGNU/ataTracker"
+Documentation = "https://github.com/DotchGNU/ataTracker/tree/main/docs"
+Issues = "https://github.com/DotchGNU/ataTracker/issues"
+Changelog = "https://github.com/DotchGNU/ataTracker/blob/main/CHANGELOG.md"
 
 [project.scripts]
-ata = "ataagent.cli:main"
+ata = "atatracker.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"ataagent" = ["templates/*.html", "data/*.xml"]
+"atatracker" = ["templates/*.html", "data/*.xml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -69,4 +69,4 @@ ignore = ["SIM108", "C408"]   # dict(...) calls are kept for keyword-style recor
 
 [tool.ruff.lint.per-file-ignores]
 # executed by the Python 3.7 DeepLabCut interpreter: keep 3.7-compatible idioms
-"src/ataagent/dlc/runner.py" = ["UP"]
+"src/atatracker/dlc/runner.py" = ["UP"]

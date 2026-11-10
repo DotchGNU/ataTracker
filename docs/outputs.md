@@ -1,7 +1,7 @@
 # Outputs
 
 Every step writes `run_manifest.json` into its output folder: `step`, `started`, `finished`,
-`duration_s`, `command`, `versions` (Python, ataagent, numpy, scipy, pandas, hmmlearn,
+`duration_s`, `command`, `versions` (Python, atatracker, numpy, scipy, pandas, hmmlearn,
 matplotlib, openpyxl), `params` (the full configuration), `inputs` and `outputs` (counts). Steps
 that add pages to another step's folder write `run_manifest_<step>.json`. Times are in minutes
 (`*_min`) or seconds (`*_s`) as the column name says. Every plot comes as `<name>.png` (300 dpi,

@@ -1,10 +1,12 @@
-# ataAgent
+# ataTracker
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue.svg)
 
-ataAgent — asphyxia twitching analysis from DeepLabCut pose tracks, from raw video to phase
+ataTracker — asphyxia twitching analysis from DeepLabCut pose tracks, from raw video to phase
 durations, with the researcher choosing crops, labels and checkpoints in local review pages.
+
+An agent layer built on this package (MCP tools with decision gates and decision records) is planned as a separate project, ataAgent.
 
 **Contents** — [What it does](#what-it-does) · [What the results are and are not](#what-the-results-are-and-are-not) ·
 [Installation](#installation) · [Quick start](#quick-start) · [Commands](#commands) ·
@@ -14,7 +16,7 @@ durations, with the researcher choosing crops, labels and checkpoints in local r
 ## What it does
 
 A mouse recorded during asphyxia first twitches with the chest, then with the head, then stops.
-`ataagent` turns two tracked points per frame (`CHEST`, `HEAD`, from DeepLabCut) into per-second
+`atatracker` turns two tracked points per frame (`CHEST`, `HEAD`, from DeepLabCut) into per-second
 twitch counts and segments every recording into four phases — *pre → chest → head → post* — with
 a left-to-right Poisson hidden Markov model. It reports the chest-to-head transition (head
 onset), the last twitching (end line) and the chest- and head-phase durations per animal.
@@ -52,8 +54,8 @@ with commands: [docs/workflow.md](docs/workflow.md).
 Two environments: DeepLabCut needs Python 3.7 and TensorFlow; the analysis needs Python >= 3.10.
 
 ```bash
-git clone https://github.com/DotchGNU/ataAgent.git
-cd ataAgent
+git clone https://github.com/DotchGNU/ataTracker.git
+cd ataTracker
 conda env create -f environment-analysis.yml      # ata-analysis: the `ata` command
 conda env create -f environment-dlc.yml           # ata-dlc: DeepLabCut 2.2.3 (only for the DeepLabCut steps)
 ```
@@ -89,7 +91,7 @@ inputs:
 | `ata config <file>` | write the default configuration |
 | `ata crop tool` / `serve` / `apply` | build the browser crop tool; run the localhost helper (motion detection, saving); cut the exported crops with ffmpeg |
 | `ata label` | pick uniform + likely-failure frames, pre-label them from a model, build the browser labeller |
-| `ata dlc analyze` / `screen` / `pseudo-labels` / `build-project` / `train` | DeepLabCut steps, run by `src/ataagent/dlc/runner.py` in the DeepLabCut environment |
+| `ata dlc analyze` / `screen` / `pseudo-labels` / `build-project` / `train` | DeepLabCut steps, run by `src/atatracker/dlc/runner.py` in the DeepLabCut environment |
 | `ata phase` | signals, peaks, HMM phases, end line, flags, twitching plots |
 | `ata screen` | the same for every screened animal x checkpoint |
 | `ata review picker` / `choices` / `review` / `viewer` | checkpoint picker, picker export -> choice csv, per-set review page, synchronised video viewer |
@@ -145,7 +147,7 @@ Licenses as stated in each package's metadata or license file (checked for the v
 | TensorFlow | 2.11.0 | Apache-2.0 | separate environment (DeepLabCut dependency) |
 | ffmpeg | 6.1.1 (conda-forge `gpl` build with libx264) | GPL-2.0-or-later | external program |
 
-All of these licenses are compatible with distributing ataAgent under GPL-3.0-only. DeepLabCut,
+All of these licenses are compatible with distributing ataTracker under GPL-3.0-only. DeepLabCut,
 TensorFlow and ffmpeg are not included in this repository; they are installed separately and
 called at run time (DeepLabCut through `runner.py` in its own environment, ffmpeg as a
 subprocess). The ffmpeg build with libx264 is licensed GPL-2.0-or-later, which permits use
@@ -159,11 +161,11 @@ DeepLabCut: Mathis, A. et al. *Nat. Neurosci.* 21, 1281–1289 (2018),
 
 ## License
 
-ataAgent is free software, distributed under the [GNU General Public License v3.0 only](LICENSE)
+ataTracker is free software, distributed under the [GNU General Public License v3.0 only](LICENSE)
 (SPDX: `GPL-3.0-only`).
 
 DeepLabCut (LGPL-3.0) and ffmpeg (GPL-2.0-or-later build) are not included in this repository;
 they are installed separately and called at run time.
 
 Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · Changes: [CHANGELOG.md](CHANGELOG.md) ·
-Issues: <https://github.com/DotchGNU/ataAgent/issues>
+Issues: <https://github.com/DotchGNU/ataTracker/issues>

@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "ataAgent: asphyxia twitching analysis from DeepLabCut pose tracks"
+title: "ataTracker: asphyxia twitching analysis from DeepLabCut pose tracks"
 type: software
 version: 0.1.0
 authors:
@@ -8,7 +8,7 @@ authors:
     given-names: "Geun-Woo D."
     affiliation: "Korea University"
     orcid: "https://orcid.org/0000-0003-0161-6707"
-repository-code: "https://github.com/DotchGNU/ataAgent"
+repository-code: "https://github.com/DotchGNU/ataTracker"
 license: GPL-3.0-only
 keywords:
   - DeepLabCut

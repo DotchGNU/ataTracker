@@ -28,7 +28,7 @@ from ..config import Config, config_to_dict
 from ..phase import end_line, fit_model, state_onsets
 from ..signal import compute_signals
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def spread(diff: list[float]) -> float:

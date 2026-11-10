@@ -136,7 +136,7 @@ def compute_signals(coords: pd.DataFrame, cfg: SignalConfig, bin_s: float = 1.0)
     Parameters
     ----------
     coords : DataFrame
-        Columns ``cx, cy, cl, hx, hy, hl`` (see :func:`ataagent.common.load_coords`).
+        Columns ``cx, cy, cl, hx, hy, hl`` (see :func:`atatracker.common.load_coords`).
     cfg : SignalConfig
         Signal settings.
     bin_s : float

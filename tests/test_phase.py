@@ -1,9 +1,9 @@
 import numpy as np
 
-from ataagent.common import load_coords
-from ataagent.config import config_from_dict
-from ataagent.phase import PhaseModel, end_line, fit_model, segment, state_onsets
-from ataagent.pipeline import load_recording, load_reference
+from atatracker.common import load_coords
+from atatracker.config import config_from_dict
+from atatracker.phase import PhaseModel, end_line, fit_model, segment, state_onsets
+from atatracker.pipeline import load_recording, load_reference
 from conftest import BOUNDS, FPS
 
 

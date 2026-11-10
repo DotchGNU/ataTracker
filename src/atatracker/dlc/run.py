@@ -14,7 +14,7 @@ import yaml
 
 from ..config import Config, SnapshotFamily
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 RUNNER = str(Path(__file__).with_name("runner.py"))
 
 

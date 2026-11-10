@@ -4,10 +4,10 @@ from html.parser import HTMLParser
 import pandas as pd
 import pytest
 
-from ataagent.common import OutputExistsError
-from ataagent.config import config_from_dict
-from ataagent.pipeline import run_phase, run_screen, split_tag
-from ataagent.review.pages import build_picker, build_review, choices_to_csv
+from atatracker.common import OutputExistsError
+from atatracker.config import config_from_dict
+from atatracker.pipeline import run_phase, run_screen, split_tag
+from atatracker.review.pages import build_picker, build_review, choices_to_csv
 
 
 class _Collect(HTMLParser):

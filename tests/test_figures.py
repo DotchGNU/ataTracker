@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ataagent.config import config_from_dict
-from ataagent.figures.stack import binmax, thin
+from atatracker.config import config_from_dict
+from atatracker.figures.stack import binmax, thin
 
 
 def test_thin_keeps_run_ends():
@@ -54,8 +54,8 @@ def _table():
 
 
 def test_bar_plot_writes_png_svg_source(tmp_path):
-    from ataagent.figures.bars import plot_phase_bars
-    from ataagent.figures.style import use_style
+    from atatracker.figures.bars import plot_phase_bars
+    from atatracker.figures.style import use_style
 
     use_style()
     files = plot_phase_bars(_table(), tmp_path, "bars", config_from_dict({}))
@@ -67,8 +67,8 @@ def test_bar_plot_writes_png_svg_source(tmp_path):
 
 def test_workbook_is_valid(tmp_path):
     pytest.importorskip("openpyxl")
-    from ataagent.figures import ooxml
-    from ataagent.figures.xlsx import build_workbook, theme_xml
+    from atatracker.figures import ooxml
+    from atatracker.figures.xlsx import build_workbook, theme_xml
 
     p = build_workbook(_table(), tmp_path / "w.xlsx", config_from_dict({}))
     assert ooxml.check(p) == []

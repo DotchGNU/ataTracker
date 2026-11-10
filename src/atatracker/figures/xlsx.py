@@ -22,7 +22,7 @@ import pandas as pd
 from ..config import Config
 from . import ooxml
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 A_NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
 PT_PER_EMU = 12700
 RAW, CHT = "data_raw", "chart"
@@ -51,7 +51,7 @@ CHART_ANCHOR = "F4"
 
 def theme_xml() -> bytes:
     """The Office 2013-2022 theme shipped as package data."""
-    return resources.files("ataagent").joinpath("data/theme_office2013-2022.xml").read_bytes()
+    return resources.files("atatracker").joinpath("data/theme_office2013-2022.xml").read_bytes()
 
 
 def _txt_props():

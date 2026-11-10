@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ataagent.config import config_from_dict, config_to_dict, load_config, parse_rate, save_config
+from atatracker.config import config_from_dict, config_to_dict, load_config, parse_rate, save_config
 
 ROOT = Path(__file__).resolve().parents[1]
 

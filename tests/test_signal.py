@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from ataagent.signal import amplitude, bin_counts, peak_times, step
+from atatracker.signal import amplitude, bin_counts, peak_times, step
 
 
 def test_step_modes():

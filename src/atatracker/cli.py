@@ -13,7 +13,7 @@ from . import __version__
 from .common import OutputExistsError, prepare_step_dir, setup_logging, write_manifest
 from .config import config_to_dict, load_config, save_config
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def _cfg(a: argparse.Namespace):
@@ -237,7 +237,7 @@ def cmd_figures(a: argparse.Namespace) -> int:
 
 def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="ata", description="Asphyxia twitching analysis from DeepLabCut pose tracks.")
-    ap.add_argument("--version", action="version", version=f"ataagent {__version__}")
+    ap.add_argument("--version", action="version", version=f"atatracker {__version__}")
     ap.add_argument("-v", "--verbose", action="store_true")
     sub = ap.add_subparsers(dest="step", required=True)
 

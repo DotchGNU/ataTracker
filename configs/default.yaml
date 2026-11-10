@@ -1,4 +1,4 @@
-# ataAgent default configuration. Replace every /path/to/... placeholder.
+# ataTracker default configuration. Replace every /path/to/... placeholder.
 output_dir: /path/to/output   # default parent folder of step outputs (each step can also take --out)
 signal:   # per-frame motion signal and peak calling (docs/method.md section 2)
   fps: 30000/1001   # frames/s; a number or a ratio string such as "30000/1001"

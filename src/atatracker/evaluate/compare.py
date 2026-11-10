@@ -13,7 +13,7 @@ from ..common import list_coord_files, load_coords, prepare_step_dir, write_csv,
 from ..config import Config, config_to_dict
 from .metrics import label_errors, quality_metrics, summarise_label_errors
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def compare_models(cfg: Config, out_dir: str | Path, labels_json: str | None = None, overwrite: bool = False) -> pd.DataFrame:

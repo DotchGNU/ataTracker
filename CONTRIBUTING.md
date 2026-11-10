@@ -1,11 +1,11 @@
 # Contributing
 
-Repository: <https://github.com/DotchGNU/ataAgent>. Bug reports and pull requests go to
+Repository: <https://github.com/DotchGNU/ataTracker>. Bug reports and pull requests go to
 the issue tracker of that repository.
 
 ## Coding standards
 
-* Python >= 3.10 for the package, except `src/ataagent/dlc/runner.py`, which runs inside the
+* Python >= 3.10 for the package, except `src/atatracker/dlc/runner.py`, which runs inside the
   DeepLabCut environment: it must stay Python 3.7 compatible and import only the standard library,
   numpy, pandas, PyYAML and (inside functions) deeplabcut.
 * DeepLabCut and TensorFlow are never imported by the rest of the package; the analysis installs
@@ -14,7 +14,7 @@ the issue tracker of that repository.
 * No parameter is hard-coded in logic: add it to the dataclass in `config.py` **and** to
   `configs/default.yaml` with a comment, and document it in `docs/method.md` or `docs/workflow.md`.
   `tests/test_config.py` fails if the YAML and the dataclasses differ.
-* Logging through the `ataagent` logger; no `print` in library code.
+* Logging through the `atatracker` logger; no `print` in library code.
 * A step never overwrites existing results unless `--overwrite` is given (`common.prepare_step_dir`),
   and every step writes `run_manifest.json` through `common.write_manifest`.
 * Every plot goes through `figures.style.save_figure` (300-dpi transparent PNG + SVG +

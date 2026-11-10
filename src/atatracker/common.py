@@ -19,12 +19,12 @@ import pandas as pd
 
 from . import __version__
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 COLUMNS = ["cx", "cy", "cl", "hx", "hy", "hl"]
 
 
 def setup_logging(verbose: bool = False) -> None:
-    """Configure the ``ataagent`` logger (one line per message, to stderr)."""
+    """Configure the ``atatracker`` logger (one line per message, to stderr)."""
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -60,7 +60,7 @@ def prepare_step_dir(path: str | Path, overwrite: bool = False) -> Path:
 
 
 def _versions(packages: Iterable[str]) -> dict[str, str | None]:
-    out: dict[str, str | None] = {"python": platform.python_version(), "ataagent": __version__}
+    out: dict[str, str | None] = {"python": platform.python_version(), "atatracker": __version__}
     for name in packages:
         try:
             out[name] = metadata.version(name)

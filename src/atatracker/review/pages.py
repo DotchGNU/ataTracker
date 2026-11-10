@@ -16,7 +16,7 @@ from ..crop.tool import template
 from ..signal import compute_signals
 from ..urls import relative_or_file_url
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 PICKER_NUM = ("head_on_min", "end_min", "head_lik_lt05", "head_step_p999", "bodylen_violation")
 REVIEW_NUM = (
     "head_on_min",

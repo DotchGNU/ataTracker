@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-LOG = logging.getLogger("ataagent.dlc")
+LOG = logging.getLogger("atatracker.dlc")
 PARTS = ["CHEST", "HEAD"]
 
 

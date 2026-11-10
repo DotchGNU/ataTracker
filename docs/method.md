@@ -11,7 +11,7 @@ DeepLabCut 2.2.3 tracks two body parts per frame in a fixed-size crop of each re
 rows) gives x, y (px) and the likelihood of both points. The animal name is the file name before
 `inputs.name_separator` (`DLC_`).
 
-## 2. Motion signal and peaks (`ataagent.signal`)
+## 2. Motion signal and peaks (`atatracker.signal`)
 
 For each point separately:
 
@@ -38,7 +38,7 @@ For each point separately:
 
 The two count series form the `(T, 2)` observation matrix of the HMM.
 
-## 3. Phase segmentation (`ataagent.phase`)
+## 3. Phase segmentation (`atatracker.phase`)
 
 A four-state, left-to-right hidden Markov model with Poisson emissions (two independent counts
 per bin), states 0 *pre*, 1 *chest*, 2 *head*, 3 *post*, fitted with `hmmlearn.hmm.PoissonHMM`.
@@ -87,7 +87,7 @@ Counting never uses these. Head trace before the onset is attenuated by a soft g
 after the end line both traces are drawn as flat lines at `post_chest_level` (0.03) and
 `post_head_level` (0.015) so the recording length stays visible.
 
-## 6. Tracking quality and model choice (`ataagent.evaluate`)
+## 6. Tracking quality and model choice (`atatracker.evaluate`)
 
 Label-free metrics per recording (`quality`):
 

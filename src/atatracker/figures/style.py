@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def use_style(font_family: str = "Arial", font_files: list[str] | None = None) -> None:

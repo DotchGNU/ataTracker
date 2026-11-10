@@ -16,7 +16,7 @@ from scipy.signal import fftconvolve
 from ..config import CropConfig
 from .media import grey_frames
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def ncc(img: np.ndarray, t: np.ndarray) -> np.ndarray:

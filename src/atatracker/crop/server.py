@@ -17,7 +17,7 @@ from ..config import CropConfig
 from .detect import detect_boxes
 from .media import grey_frames
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def make_handler(cfg: CropConfig, save_root: str | Path):

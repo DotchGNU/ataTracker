@@ -23,7 +23,7 @@ def plot_phase_bars(table: pd.DataFrame, out_dir: str | Path, name: str, cfg: Co
     Parameters
     ----------
     table : DataFrame
-        Output of :func:`ataagent.pipeline.run_phase` (columns ``group, animal, chest_phase_min, head_phase_min``).
+        Output of :func:`atatracker.pipeline.run_phase` (columns ``group, animal, chest_phase_min, head_phase_min``).
     out_dir, name : str or Path, str
         Output folder and file stem.
     cfg : Config

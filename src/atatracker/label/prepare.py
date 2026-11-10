@@ -19,7 +19,7 @@ from ..config import Config
 from ..crop.media import probe
 from ..crop.tool import template
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def outlier_scores(coords, cfg: Config) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

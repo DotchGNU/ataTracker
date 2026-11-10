@@ -14,12 +14,12 @@ from ..config import CropConfig
 from ..urls import file_url
 from .media import probe
 
-LOG = logging.getLogger("ataagent")
+LOG = logging.getLogger("atatracker")
 
 
 def template(name: str) -> str:
     """Text of a packaged HTML template."""
-    return resources.files("ataagent").joinpath(f"templates/{name}").read_text(encoding="utf-8")
+    return resources.files("atatracker").joinpath(f"templates/{name}").read_text(encoding="utf-8")
 
 
 def raw_videos(cfg: CropConfig) -> dict[str, str]:
