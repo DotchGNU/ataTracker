@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Twitching viewer</title>
+<style>body{font:13px Arial,sans-serif;margin:8px;color:#111}select,button{font:inherit;margin:2px}#wrap{position:relative;display:inline-block}video{display:block}#ov{position:absolute;left:0;top:0;pointer-events:none}canvas#pl{display:block;border:1px solid #bbb;margin-top:6px}.s{color:#555}</style></head><body>
+<div><b>Model</b> __TAG__ &nbsp; <b>Sample</b> <select id="sm"></select> <span class="s" id="info"></span></div>
+<div id="wrap"><video id="v" controls muted width="960" height="544"></video><canvas id="ov" width="960" height="544"></canvas></div>
+<canvas id="pl" width="960" height="220"></canvas>
+<div class="s">Top: video with CHEST (blue) and HEAD (red) pointers from the DLC output. Bottom: normalised motion amplitude per frame (__SIG__; chest blue, head red; x = minutes); dashed lines = head onset and end line; the cursor and dots follow the video. Click the plot to jump. Dim pointer = head likelihood &lt; 0.5.</div>
+<script>
+const IDX=/*INDEX*/[],$=id=>document.getElementById(id),v=$("v"),ov=$("ov"),o=ov.getContext("2d"),pl=$("pl"),p=pl.getContext("2d");let D=null;
+$("sm").innerHTML=IDX.map((x,i)=>`<option value="${i}">${x.cohort}  ${x.sample}</option>`).join("");
+function load(i){const x=IDX[i];v.src=x.video;const s=document.createElement("script");s.src="data/"+(x.file||x.sample)+".js";s.onload=()=>{D=window.VD;$("info").textContent=D.n+" frames, "+(D.n/D.fps/60).toFixed(2)+" min, "+D.cpk.length+" chest / "+D.hpk.length+" head peaks";drawPlot(0)};document.head.appendChild(s)}
+$("sm").onchange=()=>load(+$("sm").value);
+const M={l:44,r:10,t:8,b:26};function px(t){return M.l+(pl.width-M.l-M.r)*t/(D.n/D.fps)}function py(a){return M.t+(pl.height-M.t-M.b)*(1-a)}
+function drawPlot(t){if(!D)return;p.clearRect(0,0,pl.width,pl.height);p.font="11px Arial";p.fillStyle="#fff";p.fillRect(0,0,pl.width,pl.height);p.strokeStyle="#999";p.strokeRect(M.l,M.t,pl.width-M.l-M.r,pl.height-M.t-M.b);
+ const T=D.n/D.fps;p.fillStyle="#000";for(let m=0;m<=Math.floor(T/60);m++){p.fillText(m,px(m*60)-3,pl.height-10)}p.fillText("min",pl.width-30,pl.height-10);p.fillText("1",M.l-12,py(1)+4);p.fillText("0",M.l-12,py(0)+4);
+ [["ca","#1f3a93"],["ha","#d62728"]].forEach(([k,c])=>{p.strokeStyle=c;p.lineWidth=.8;p.beginPath();const a=D[k],st=Math.max(1,Math.floor(a.length/900));for(let i=0;i<a.length;i+=st){let m=0;for(let j=i;j<Math.min(i+st,a.length);j++)m=Math.max(m,a[j]);const x=px(i/D.fps),y=py(m);i?p.lineTo(x,y):p.moveTo(x,y)}p.stroke()});
+ [D.hon,D.end].forEach((b,i)=>{if(b==null)return;p.strokeStyle="#555";p.setLineDash([5,4]);p.lineWidth=1;p.beginPath();p.moveTo(px(b),M.t);p.lineTo(px(b),pl.height-M.b);p.stroke();p.setLineDash([]);p.fillStyle="#555";p.fillText(i?"end":"head onset",px(b)+3,M.t+11)});
+ const f=Math.min(D.n-1,Math.floor(t*D.fps));p.strokeStyle="#000";p.lineWidth=1.2;p.beginPath();p.moveTo(px(t),M.t);p.lineTo(px(t),pl.height-M.b);p.stroke();
+ [["ca","#1f3a93"],["ha","#d62728"]].forEach(([k,c])=>{p.fillStyle=c;p.beginPath();p.arc(px(t),py(D[k][f]),5,0,6.3);p.fill()})}
+function draw(){const t=v.currentTime;drawPlot(t);o.clearRect(0,0,ov.width,ov.height);if(!D)return;const f=Math.min(D.n-1,Math.floor(t*D.fps)),k=ov.width/__FRAME_W__;
+ o.lineWidth=3;o.strokeStyle="#1f3a93";o.beginPath();o.arc(D.cx[f]*k,D.cy[f]*k,9,0,6.3);o.stroke();o.fillStyle="#1f3a93";o.font="bold 13px Arial";o.fillText("CHEST",D.cx[f]*k+12,D.cy[f]*k-8);
+ o.globalAlpha=D.hl[f]<.5?.35:1;o.strokeStyle="#d62728";o.beginPath();o.arc(D.hx[f]*k,D.hy[f]*k,9,0,6.3);o.stroke();o.fillStyle="#d62728";o.fillText("HEAD",D.hx[f]*k+12,D.hy[f]*k-8);o.globalAlpha=1}
+(function loop(){draw();requestAnimationFrame(loop)})();
+pl.onclick=e=>{if(!D)return;const r=pl.getBoundingClientRect(),x=(e.clientX-r.left)*(pl.width/r.width);v.currentTime=Math.max(0,Math.min(D.n/D.fps,(x-M.l)/(pl.width-M.l-M.r)*D.n/D.fps))};
+const hs=decodeURIComponent(location.hash.slice(1)),h0=IDX.findIndex(x=>x.sample===hs);if(h0>=0)$("sm").value=h0;
+window.onhashchange=()=>{const k=IDX.findIndex(x=>x.sample===decodeURIComponent(location.hash.slice(1)));if(k>=0){$("sm").value=k;load(k)}};
+if(IDX.length)load(Math.max(0,h0));
+</script></body></html>

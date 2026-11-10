@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Twitching review __SET__</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#fafafa;--fg:#222;--card:#fff;--line:#ddd;--bad:#d1242f;--warn:#bf8700;--muted:#666}
+body{font-family:Arial,sans-serif;margin:0;background:var(--bg);color:var(--fg)}
+header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:8px 16px;z-index:5;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header button{padding:6px 12px;cursor:pointer}#status{color:var(--muted);font-size:13px}
+h2{font-size:16px;margin:14px 16px 4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px;padding:0 16px}
+.card{background:var(--card);border:3px solid var(--line);border-radius:4px;padding:4px}
+.card.prob{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad)}
+.card img{width:100%;display:block;background:#fff;cursor:pointer}
+.t{font-size:14px;font-weight:bold}.t button{float:right;font-size:12px;cursor:pointer}
+#vp{position:fixed;top:0;right:0;bottom:0;width:min(1010px,98vw);background:#fff;border-left:2px solid #444;z-index:20;display:none;flex-direction:column;box-shadow:-4px 0 12px #0004}
+#vp .bar{padding:6px 10px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}#vp iframe{flex:1;border:0;width:100%}.m{font-size:12px;color:var(--muted)}.f{font-size:12px;color:var(--warn);font-weight:bold}
+textarea{width:100%;height:38px;font-family:inherit;box-sizing:border-box}
+</style></head><body>
+<header><b>Twitching review — __SET__</b><span class="m">click the plot to toggle <b style="color:var(--bad)">problem</b>; amber text = metric flag (vs the maximum over the reference recordings)</span>
+<button onclick="dl()">Download JSON</button><button onclick="cp()">Copy as text</button><span id="status"></span></header>
+<div id="vp"><div class="bar"><b id="vt"></b><a id="vl" target="_blank">open in new tab</a><button onclick="vclose()" style="margin-left:auto">Close</button></div><iframe id="vf"></iframe></div>
+<main id="main"></main>
+<script>
+const DATA=__DATA__, KEY="__KEY__", SETNAME="__SET__";
+let S={};try{S=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){};upd()}
+const f=(v,u)=>v===null?"-":v+(u||"");
+const main=document.getElementById("main");let g="",grid;
+DATA.forEach(d=>{
+ if(d.group!==g){g=d.group;main.insertAdjacentHTML("beforeend",`<h2>${g} (n=${DATA.filter(x=>x.group===g).length})</h2>`);grid=document.createElement("div");grid.className="grid";main.appendChild(grid)}
+ const c=document.createElement("div");c.className="card";c.id="c_"+d.animal;
+ c.innerHTML=`<div class="t">${d.animal}<button>open video</button></div><img loading="lazy" src="${d.png}" alt="${d.animal}">
+ <div class="m">onset ${f(d.head_on_min)} · end ${f(d.end_min)} min · chest ${f(d.chest_phase_min)} / head ${f(d.head_phase_min)} min</div>
+ <div class="m">manual Last twitching ${f(d.manual_last_s," s")} · end − manual ${f(d.end_minus_manual_s," s")}</div>
+ <div class="m">head lik&lt;0.5 ${f(d.head_lik_lt05)} · head step p99.9 ${f(d.head_step_p999," px")} · body-length viol. ${f(d.bodylen_violation)}</div>
+ <div class="m">weights: ${d.checkpoint_tag}${d.note?" · "+d.note:""}</div>
+ ${d.metric_flags?`<div class="f">${d.metric_flags}</div>`:""}<textarea placeholder="note"></textarea>`;
+ c.querySelector(".t button").onclick=()=>vopen(d.animal);
+ c.querySelector("img").onclick=()=>{S[d.animal]=S[d.animal]||{problem:false,note:""};S[d.animal].problem=!S[d.animal].problem;render(d.animal);save()};
+ const n=c.querySelector("textarea");n.value=(S[d.animal]||{}).note||"";n.oninput=()=>{S[d.animal]=S[d.animal]||{problem:false};S[d.animal].note=n.value;save()};
+ grid.appendChild(c);render(d.animal)});
+function vopen(a){const u="viewer/viewer.html#"+encodeURIComponent(a),F=document.getElementById("vf");document.getElementById("vt").textContent=a;document.getElementById("vl").href=u;document.getElementById("vp").style.display="flex";if(F.dataset.set){F.src=u;F.contentWindow.location.reload&&0}else F.dataset.set=1;F.src=u}
+function vclose(){document.getElementById("vp").style.display="none";document.getElementById("vf").src="about:blank"}
+function render(a){document.getElementById("c_"+a).classList.toggle("prob",!!(S[a]||{}).problem)}
+function out(){return DATA.map(d=>({animal:d.animal,group:d.group,weights:d.checkpoint_tag,problem:!!(S[d.animal]||{}).problem,note:(S[d.animal]||{}).note||"",head_on_min:d.head_on_min,end_min:d.end_min,metric_flags:d.metric_flags}))}
+function upd(){document.getElementById("status").textContent=`${out().filter(x=>x.problem).length}/${DATA.length} flagged as problem`}
+function dl(){const b=new Blob([JSON.stringify({set:SETNAME,created:new Date().toISOString(),animals:out()},null,1)],{type:"application/json"});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download="__DOWNLOAD__";l.click()}
+function cp(){const t=out().map(o=>`${o.animal}\t${o.group}\t${o.problem?"PROBLEM":"ok"}\t${o.weights}\t${o.note}`).join("\n");navigator.clipboard.writeText(t).then(()=>{document.getElementById("status").textContent="copied"})}
+upd();
+</script></body></html>

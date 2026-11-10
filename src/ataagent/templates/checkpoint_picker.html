@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Checkpoint picker</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#fafafa;--fg:#222;--card:#fff;--line:#ddd;--sel:#1a7f37;--final:#d1242f;--muted:#666}
+body{font-family:Arial,sans-serif;margin:0;background:var(--bg);color:var(--fg)}
+header{position:sticky;top:0;max-height:45vh;overflow:auto;background:#fff;border-bottom:1px solid var(--line);padding:8px 16px;z-index:5;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header button{padding:6px 12px;cursor:pointer}
+#status{color:var(--muted);font-size:13px}
+nav a{margin-right:8px;font-size:13px}
+section{padding:8px 16px;border-bottom:2px solid var(--line)}
+h2{font-size:17px;margin:10px 0 4px}
+.pick{font-size:13px;margin-bottom:6px}
+.fam{font-size:13px;color:var(--muted);margin:8px 0 2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.card{background:var(--card);border:3px solid var(--line);border-radius:4px;padding:4px;cursor:pointer}
+.card.final{border-color:var(--final)}
+.card.sel{border-color:var(--sel);box-shadow:0 0 0 3px var(--sel)}
+.card img{width:100%;display:block;background:#fff}
+.card .t{font-size:13px;font-weight:bold}.card .m{font-size:12px;color:var(--muted)}
+textarea{width:100%;height:42px;font-family:inherit}
+.legend span{display:inline-block;padding:0 6px;margin-right:6px;border:3px solid}
+</style></head><body>
+<header><b>Checkpoint picker</b>
+<span class="legend"><span style="border-color:var(--final)">default checkpoint</span><span style="border-color:var(--sel)">your choice</span></span>
+<button onclick="dl()">Download choices (JSON)</button><button onclick="cp()">Copy as text</button><span id="status"></span>
+<nav id="nav"></nav><details open><summary><b>Overlap across animals</b> (checkpoints ticked for the most animals)</summary><div id="tally"></div></details></header>
+<main id="main"></main>
+<script>
+const DISP=__DISP__;const dn=a=>{for(const k in DISP)if(a.startsWith(k))return DISP[k]+a.slice(k.length);return a};
+const DATA=__DATA__, FAMNOTE=__FAMNOTE__, PRE=__PRE__, KEY="__KEY__";
+let S={};try{S=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
+for(const a in PRE){if(!S[a])S[a]={tags:PRE[a].slice(),note:""}}
+for(const a in S){if(!S[a].tags)S[a].tags=S[a].tag?[S[a].tag]:[];delete S[a].tag}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){};upd()}
+const animals=[...new Set(DATA.map(d=>d.animal))];
+const main=document.getElementById("main"),nav=document.getElementById("nav");
+animals.forEach(a=>{
+ const sec=document.createElement("section");sec.id=a;
+ nav.insertAdjacentHTML("beforeend",`<a href="#${a}">${dn(a)}</a>`);
+ sec.innerHTML=`<h2>${dn(a)}${dn(a)!==a?` <small style="color:#666">(file name ${a})</small>`:""}</h2><div class="pick" id="p_${a}"></div><textarea id="n_${a}" placeholder="note (why this checkpoint)"></textarea>`;
+ let fam="";let grid;
+ DATA.filter(d=>d.animal===a).forEach(d=>{
+  if(d.family!==fam){fam=d.family;sec.insertAdjacentHTML("beforeend",`<div class="fam">${fam}${FAMNOTE[fam]?" — "+FAMNOTE[fam]:""}</div>`);grid=document.createElement("div");grid.className="grid";sec.appendChild(grid)}
+  const c=document.createElement("div");c.className="card"+(d.is_default?" final":"");c.dataset.tag=d.tag;
+  c.innerHTML=`<img loading="lazy" src="${d.png}"><div class="t">${d.tag}</div><div class="m">onset ${d.head_onset_min.toFixed(2)} / end ${d.end_min.toFixed(2)} min · head lik&lt;0.5 ${d.head_lik_lt05} · body-length viol. ${d.bodylen_violation} · head step p99.9 ${d.head_step_p999}</div>`;
+  c.onclick=()=>{S[a]=S[a]||{tags:[],note:""};const i=S[a].tags.indexOf(d.tag);i<0?S[a].tags.push(d.tag):S[a].tags.splice(i,1);render(a);save()};
+  grid.appendChild(c)});
+ main.appendChild(sec);
+ const n=sec.querySelector("textarea");n.value=(S[a]||{}).note||"";n.oninput=()=>{S[a]=S[a]||{tags:[]};S[a].note=n.value;save()};
+ render(a)});
+function render(a){const ts=(S[a]||{}).tags||[];document.querySelectorAll(`#${CSS.escape(a)} .card`).forEach(c=>c.classList.toggle("sel",ts.includes(c.dataset.tag)));
+ document.getElementById("p_"+a).innerHTML=ts.length?`<b>Ticked (${ts.length}):</b> `+ts.map(t=>{const d=DATA.find(x=>x.animal===a&&x.tag===t);return `${t} (${d.head_onset_min.toFixed(2)} / ${d.end_min.toFixed(2)})`}).join(" · "):"<i>none ticked</i>"}
+function out(){return animals.map(a=>{const s=S[a]||{};return{animal:a,display_name:dn(a),note:s.note||"",ticked:(s.tags||[]).map(t=>{const d=DATA.find(x=>x.animal===a&&x.tag===t);return{tag:t,family:d.family,head_onset_min:d.head_onset_min,end_min:d.end_min}})}})}
+function tally(){const c={};out().forEach(o=>o.ticked.forEach(t=>{(c[t.tag]=c[t.tag]||[]).push(dn(o.animal))}));return Object.entries(c).sort((x,y)=>y[1].length-x[1].length||x[0].localeCompare(y[0]))}
+function upd(){const o=out();document.getElementById("status").textContent=`${o.filter(x=>x.ticked.length).length}/${animals.length} animals with ticks`;
+ const T=tally();document.getElementById("tally").innerHTML=T.length?`<table style="font-size:12px;border-collapse:collapse">${T.map(([t,as])=>`<tr><td style="padding:1px 8px"><b>${as.length}</b>/${animals.length}</td><td style="padding:1px 8px">${t}</td><td style="padding:1px 8px;color:#666">${as.join(", ")}</td></tr>`).join("")}</table>`:"<i>nothing ticked yet</i>"}
+function dl(){const b=new Blob([JSON.stringify({created:new Date().toISOString(),choices:out(),overlap:tally().map(([t,as])=>({tag:t,n_animals:as.length,animals:as}))},null,1)],{type:"application/json"});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download="__DOWNLOAD__";l.click()}
+function cp(){const t=out().map(o=>`${o.animal}\t${o.ticked.map(x=>x.tag).join(", ")||"-"}\t${o.note}`).join("\n")+"\n\noverlap\n"+tally().map(([t,as])=>`${as.length}\t${t}`).join("\n");navigator.clipboard.writeText(t).then(()=>{document.getElementById("status").textContent="copied"})}
+upd();
+</script></body></html>
