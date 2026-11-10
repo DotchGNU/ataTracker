@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Raw video crop tool</title>
+<style>
+body{font:13px Arial,sans-serif;margin:0;color:#111}
+#top{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #ccc;background:#f6f6f6;position:sticky;top:0;z-index:5}
+.tab{padding:6px 14px;border:1px solid #888;cursor:pointer;background:#fff}.tab.on{background:#222;color:#fff}
+#page{padding:10px}
+button,select,input{font:inherit;margin:2px}.mono{font-family:Consolas,monospace}.row{margin:6px 0}.small{font-size:12px;color:#444}
+table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:3px 6px;vertical-align:top}th{background:#eee}
+#stage{position:relative;display:inline-block;background:#000}video{display:block;max-width:100%}
+#box{position:absolute;border:2px solid #f33;box-sizing:border-box;cursor:move}#hdl{position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;background:#f33;cursor:nwse-resize}
+.mc{position:relative;display:inline-block}.mc canvas{border:1px solid #888}
+.ok{color:#080}.bad{color:#c00}.sel{background:#eef}
+.sm{display:inline-block;margin:3px;padding:4px;border:1px solid #bbb;cursor:pointer;font-size:12px}.sm.done{border-color:#2a2}.sm.sel{background:#dde}
+</style></head><body>
+<div id="top"><b>Cohort</b><select id="coh"></select>
+<span class="tab" id="t1">1. Segments (batch, start, end)</span><span class="tab" id="t2">2. Detect mice and name samples</span><span class="tab" id="t3">3. Adjust crops and export</span>
+<span id="srv" class="small"></span></div>
+<div id="page"></div>
+<script>
+const D=/*DATA*/null, OW=D.out_w, OH=D.out_h, AR=OH/OW, API='__API__';
+const $=id=>document.getElementById(id);
+let coh=Object.keys(D.cohorts)[0], tab=1, S={segments:[]}, nextId=1, curSeg=null, curMouse=null;
+const C=()=>D.cohorts[coh]; const RAW=n=>C().raws.find(r=>r.name===n);
+async function save(){try{localStorage.setItem('crop_state_v2',JSON.stringify(S))}catch(e){} try{await fetch(API+'/state',{method:'POST',body:JSON.stringify(S)})}catch(e){}}
+async function load(){let s=null;try{const r=await fetch(API+'/state');const j=await r.json();if(j&&j.segments)s=j;$('srv').textContent='helper server: connected';$('srv').className='small ok'}catch(e){$('srv').textContent='helper server NOT running - start: python crop_server.py (detection needs it)';$('srv').className='small bad'}
+ if(!s){try{s=JSON.parse(localStorage.getItem('crop_state_v2')||'null')}catch(e){}} if(s&&s.segments)S=s; nextId=1+Math.max(0,...S.segments.map(x=>x.id))}
+for(const c of Object.keys(D.cohorts)){const o=document.createElement('option');o.textContent=c;$('coh').appendChild(o)}
+$('coh').onchange=()=>{coh=$('coh').value;render()};
+['t1','t2','t3'].forEach((id,i)=>$(id).onclick=()=>{tab=i+1;render()});
+const segs=()=>S.segments.filter(s=>s.cohort===coh);
+function fmt(t){return (+t).toFixed(1)}
+// ---------- shared video ----------
+let v=null; function mkVideo(){return document.createElement('video')}
+function videoBlock(rawName,onMeta){const r=RAW(rawName);const st=document.createElement('div');st.id='stage';st.innerHTML='<video id="v" controls muted preload="auto"></video><div id="box" style="display:none"><div id="hdl"></div></div>';
+ return st}
+function bindVideo(rawName,seekT,cb){v=$('v');v.src=RAW(rawName).url;v.onloadedmetadata=()=>{if(seekT!=null)v.currentTime=seekT;if(cb)cb()}}
+// ---------- step 1 ----------
+function render(){['t1','t2','t3'].forEach((id,i)=>$(id).classList.toggle('on',tab===i+1));[render1,render2,render3][tab-1]()}
+function hint(rn){const hs=[];C().animals.forEach(a=>{const g=(a.suggest||[])[0];if(g&&g.raw===rn)hs.push(a.name)});return hs.join(', ')||'-'}
+let s1raw=null;
+function render1(){const P=$('page');P.innerHTML='<div class="small">Define one or more segments per raw video: a batch name, and the time range (seconds) in which only the mice are moving (start = recording starts, end = recording ends). Automatic detection in step 2 uses this range.</div>';
+ const t=document.createElement('table');t.innerHTML='<tr><th>Raw video</th><th>Auto hint: animals whose best match is this video</th><th>Segments</th></tr>';
+ C().raws.forEach(r=>{const tr=document.createElement('tr');const ss=segs().filter(s=>s.raw===r.name);
+  tr.innerHTML='<td><b>'+r.name.replace('.MP4','')+'</b><br><span class="small mono">'+Math.round(r.dur)+' s, '+r.fps.toFixed(2)+' fps</span><br><button data-o="'+r.name+'">Open</button></td><td class="small">'+hint(r.name)+'</td><td></td>';
+  const td=tr.children[2];ss.forEach(s=>{const d=document.createElement('div');d.className='row';d.innerHTML='batch <input size="22" value="'+(s.batch||'')+'" data-f="batch" data-i="'+s.id+'"> start <input size="6" class="mono" value="'+(s.start??'')+'" data-f="start" data-i="'+s.id+'"> end <input size="6" class="mono" value="'+(s.end??'')+'" data-f="end" data-i="'+s.id+'"> <button data-ss="'+s.id+'">Set start = now</button><button data-se="'+s.id+'">Set end = now</button><button data-del="'+s.id+'">Remove</button>';td.appendChild(d)});
+  const ab=document.createElement('button');ab.textContent='+ Add segment';ab.onclick=()=>{S.segments.push({id:nextId++,cohort:coh,raw:r.name,batch:'',start:'',end:'',n:2,crop_w:D.crop_w,mice:[]});save();render()};td.appendChild(ab);t.appendChild(tr)});
+ P.appendChild(t);const pv=document.createElement('div');pv.className='row';pv.innerHTML='<div id="vhead" class="small">No video open.</div>';P.appendChild(pv);
+ P.querySelectorAll('input[data-f]').forEach(i=>i.onchange=()=>{const s=S.segments.find(x=>x.id==i.dataset.i);s[i.dataset.f]=i.dataset.f==='batch'?i.value:(i.value===''?'':+i.value);save()});
+ P.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{S.segments=S.segments.filter(x=>x.id!=b.dataset.del);save();render()});
+ const setT=(id,f)=>{if(!v){alert('Open a raw video first (Open button).');return}const s=S.segments.find(x=>x.id==id);if(s.raw!==s1raw){alert('Open this segment\'s raw video first.');return}s[f]=+v.currentTime.toFixed(2);save();render();openRaw(s1raw,v.currentTime)};
+ P.querySelectorAll('button[data-ss]').forEach(b=>b.onclick=()=>setT(b.dataset.ss,'start'));P.querySelectorAll('button[data-se]').forEach(b=>b.onclick=()=>setT(b.dataset.se,'end'));
+ P.querySelectorAll('button[data-o]').forEach(b=>b.onclick=()=>openRaw(b.dataset.o,0));
+ if(s1raw&&RAW(s1raw))openRaw(s1raw,v?v.currentTime:0)}
+function openRaw(rn,t){s1raw=rn;const pv=$('page').lastChild;pv.innerHTML='<div class="small"><b>'+rn+'</b> &nbsp; <button id="m5">-5 s</button><button id="m1">-1 s</button><button id="p1">+1 s</button><button id="p5">+5 s</button> <button id="gr">Grid view (12 frames)</button></div>';
+ const st=videoBlock(rn);pv.appendChild(st);const gb=document.createElement('div');gb.id='gridbox';pv.appendChild(gb);bindVideo(rn,t);
+ [['m5',-5],['m1',-1],['p1',1],['p5',5]].forEach(([i,d])=>$(i).onclick=()=>{v.currentTime=Math.max(0,v.currentTime+d)});
+ $('gr').onclick=async()=>{gb.innerHTML='';const t0=v.currentTime,dur=v.duration;for(let i=0;i<12;i++){const tt=dur*(i+.5)/12;v.currentTime=tt;await new Promise(r=>v.addEventListener('seeked',r,{once:true}));const c=document.createElement('canvas');c.width=240;c.height=135;c.getContext('2d').drawImage(v,0,0,240,135);c.style.cursor='pointer';c.onclick=()=>{v.currentTime=tt};const w=document.createElement('span');w.style.cssText='display:inline-block;margin:2px;font-size:11px';w.append(c,document.createElement('br'),Math.round(tt)+' s');gb.appendChild(w)}v.currentTime=t0}}
+// ---------- step 2 ----------
+function render2(){const P=$('page');P.innerHTML='<div class="small">For each segment choose 1 or 2 mice (default 2), set the target crop width (default from the configuration, crop.crop_w), run detection (moving region = the mice), then type a sample name for each detected mouse (left to right). Names of the existing clips are offered as suggestions.</div><datalist id="names">'+C().animals.map(a=>'<option value="'+a.name+'">').join('')+'</datalist>';
+ const ok=segs().filter(s=>s.start!==''&&s.end!==''&&s.end>s.start);if(!ok.length){P.innerHTML+='<div class="bad row">No complete segments yet - finish step 1 (start and end).</div>'}
+ ok.forEach(s=>{const d=document.createElement('div');d.className='row';d.style.cssText='border:1px solid #bbb;padding:6px';
+  d.innerHTML='<b>'+s.raw.replace('.MP4','')+'</b> &nbsp; batch <span class="mono">'+(s.batch||'(none)')+'</span> &nbsp; '+fmt(s.start)+' - '+fmt(s.end)+' s &nbsp; mice <label><input type="radio" name="n'+s.id+'" value="2" '+(s.n==2?'checked':'')+'>2 (default)</label><label><input type="radio" name="n'+s.id+'" value="1" '+(s.n==1?'checked':'')+'>1</label> &nbsp; crop width px <input size="5" class="mono" value="'+s.crop_w+'" data-w="'+s.id+'"> <button data-d="'+s.id+'">Detect</button> <span id="st'+s.id+'" class="small"></span><div id="res'+s.id+'"></div>';P.appendChild(d);showRes(s)});
+ P.querySelectorAll('input[type=radio]').forEach(r=>r.onchange=()=>{const id=+r.name.slice(1);S.segments.find(x=>x.id===id).n=+r.value;save()});
+ P.querySelectorAll('input[data-w]').forEach(i=>i.onchange=()=>{S.segments.find(x=>x.id==i.dataset.w).crop_w=+i.value;save()});
+ P.querySelectorAll('button[data-d]').forEach(b=>b.onclick=async()=>{const s=S.segments.find(x=>x.id==b.dataset.d),r=RAW(s.raw);$('st'+s.id).textContent='detecting...';
+  try{const u=API+'/detect?cohort='+coh+'&raw='+encodeURIComponent(s.raw)+'&start='+s.start+'&end='+s.end+'&n='+s.n+'&w='+r.w+'&h='+r.h+'&crop_w='+s.crop_w;const j=await (await fetch(u)).json();if(j.error)throw new Error(j.error);
+   const old=s.mice||[];s.mice=j.mice.map((m,i)=>({...m,name:(old[i]&&old[i].name)||'',start:s.start,end:s.end}));s.motion=j.motion_png;save();$('st'+s.id).textContent=j.frames+' frames analysed';showRes(s)}catch(e){$('st'+s.id).textContent='ERROR: '+e.message}})}
+function showRes(s){const R=$('res'+s.id);if(!R||!s.motion||!(s.mice||[]).length)return;const r=RAW(s.raw);R.innerHTML='';
+ const cv=document.createElement('canvas');cv.width=480;cv.height=270;const im=new Image();im.onload=()=>{const c=cv.getContext('2d');c.drawImage(im,0,0);c.lineWidth=2;s.mice.forEach((m,i)=>{c.strokeStyle=i?'#0af':'#f33';c.strokeRect(m.x/r.w*480,m.y/r.h*270,m.w/r.w*480,m.w*AR/r.h*270);c.fillStyle=c.strokeStyle;c.fillText('#'+(i+1),m.x/r.w*480+4,m.y/r.h*270+12)})};im.src=s.motion;
+ const dv=document.createElement('div');dv.className='mc';dv.appendChild(cv);R.appendChild(dv);
+ const f=document.createElement('div');f.style.cssText='display:inline-block;vertical-align:top;margin-left:10px';
+ s.mice.forEach((m,i)=>{const row=document.createElement('div');row.className='row';row.innerHTML='mouse #'+(i+1)+' ('+(i?'right':'left')+'; box '+m.w+' px) sample name <input list="names" size="34" value="'+(m.name||'')+'" data-m="'+i+'">';row.querySelector('input').onchange=e=>{m.name=e.target.value.trim();save()};f.appendChild(row)});
+ if(s.mice.length==2){const b=document.createElement('button');b.textContent='Swap names';b.onclick=()=>{const a=s.mice[0].name;s.mice[0].name=s.mice[1].name;s.mice[1].name=a;save();render()};f.appendChild(b)}
+ const rf=document.createElement('div');rf.className='small';rf.innerHTML='Reference clips, for naming:<br>'+C().animals.map(a=>'<span style="display:inline-block;margin:1px"><img src="'+a.ref+'" width="96" height="54"><br>'+a.name+'</span>').join('');f.appendChild(rf);R.appendChild(f)}
+// ---------- step 3 ----------
+let rect={x:0,y:0,w:900};
+function allMice(){const o=[];segs().forEach(s=>(s.mice||[]).forEach((m,i)=>o.push({s,m,i})));return o}
+function render3(){const P=$('page');const L=allMice();P.innerHTML='<div class="small">Select a sample, drag the red box (corner handle = size, aspect fixed at 480:272). Start/end are per sample (default = segment). The preview is exactly what the model will see.</div>';
+ const names=L.map(x=>x.m.name).filter(Boolean);const dup=names.filter((n,i)=>names.indexOf(n)!==i);
+ const lst=document.createElement('div');lst.className='row';L.forEach((x,k)=>{const b=document.createElement('span');b.className='sm'+(x.m.confirmed?' done':'')+(curMouse===x.m?' sel':'');b.textContent=(x.m.name||'(unnamed)')+' [#'+(x.i+1)+', '+x.s.raw.replace('.MP4','')+']';b.onclick=()=>{curMouse=x.m;curSeg=x.s;render3()};lst.appendChild(b)});P.appendChild(lst);
+ if(dup.length)P.insertAdjacentHTML('beforeend','<div class="bad">Duplicate sample names: '+[...new Set(dup)].join(', ')+'</div>');
+ const ex=document.createElement('div');ex.className='row';ex.innerHTML='<button id="exp" style="font-weight:bold">Export crops.json</button> <span id="exs" class="small"></span>';P.appendChild(ex);
+ $('exp').onclick=()=>{const bad=L.filter(x=>!x.m.name);if(bad.length){$('exs').textContent='Name all mice first ('+bad.length+' unnamed).';return}if(dup.length){$('exs').textContent='Fix duplicate names.';return}
+  const out=L.map(x=>({cohort:coh,name:x.m.name,raw:x.s.raw,x:Math.round(x.m.x),y:Math.round(x.m.y),w:Math.round(x.m.w),h:Math.round(x.m.w*AR),start:+x.m.start,end:+x.m.end}));
+  const b=new Blob([JSON.stringify(out,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='crops.json';a.click();$('exs').textContent='Exported '+out.length+' crops (move crops.json next to the tool, then run crop_apply.py).'};
+ if(!curMouse||!L.find(x=>x.m===curMouse)){if(L[0]){curMouse=L[0].m;curSeg=L[0].s}else{P.insertAdjacentHTML('beforeend','<div class="bad">No detected mice yet - run step 2.</div>');return}}
+ const m=curMouse,s=curSeg,r=RAW(s.raw);rect={x:m.x,y:m.y,w:m.w};
+ const ed=document.createElement('div');ed.className='row';ed.innerHTML='name <input size="34" id="nm" value="'+(m.name||'')+'" list="names2"><datalist id="names2">'+C().animals.map(a=>'<option value="'+a.name+'">').join('')+'</datalist> start <input id="ts" size="6" class="mono" value="'+m.start+'"> end <input id="te" size="6" class="mono" value="'+m.end+'"> x <input id="cx" size="5" class="mono"> y <input id="cy" size="5" class="mono"> width <input id="cw" size="5" class="mono"> <span id="scale" class="mono"></span> <button id="cf" style="font-weight:bold">Confirm this crop</button>';P.appendChild(ed);
+ P.appendChild(videoBlock(s.raw));const pr=document.createElement('div');pr.className='row';pr.innerHTML='Preview (480x272): <canvas id="pv" width="480" height="272" style="border:1px solid #888;vertical-align:top"></canvas>';P.appendChild(pr);
+ $('box').style.display='block';const box=$('box');
+ function k(){return v.clientWidth/r.w}
+ function layout(){const q=k();box.style.left=rect.x*q+'px';box.style.top=rect.y*q+'px';box.style.width=rect.w*q+'px';box.style.height=rect.w*AR*q+'px';$('cx').value=Math.round(rect.x);$('cy').value=Math.round(rect.y);$('cw').value=Math.round(rect.w);$('scale').textContent=Math.round(rect.w)+'x'+Math.round(rect.w*AR)+' px, scale '+(OW/rect.w).toFixed(3)}
+ function clamp(){rect.w=Math.max(100,Math.min(rect.w,r.w));rect.x=Math.max(0,Math.min(rect.x,r.w-rect.w));rect.y=Math.max(0,Math.min(rect.y,r.h-rect.w*AR))}
+ function draw(){try{$('pv').getContext('2d').drawImage(v,rect.x,rect.y,rect.w,rect.w*AR,0,0,OW,OH)}catch(e){}}
+ bindVideo(s.raw,+m.start+ (m.end-m.start)/2,()=>{layout();draw()});v.onseeked=draw;setInterval(()=>{if(v&&!v.paused&&$('pv'))draw()},120);
+ let drag=null;box.onmousedown=e=>{drag={m:e.target.id==='hdl'?'r':'m',x:e.clientX,y:e.clientY,r:{...rect}};e.preventDefault()};
+ window.onmousemove=e=>{if(!drag)return;const q=k(),dx=(e.clientX-drag.x)/q,dy=(e.clientY-drag.y)/q;if(drag.m==='m'){rect.x=drag.r.x+dx;rect.y=drag.r.y+dy}else rect.w=drag.r.w+dx;clamp();layout();draw()};window.onmouseup=()=>{if(drag){drag=null;m.x=rect.x;m.y=rect.y;m.w=rect.w;m.confirmed=false;save()}};
+ ['cx','cy','cw'].forEach(i=>$(i).onchange=()=>{rect={x:+$('cx').value,y:+$('cy').value,w:+$('cw').value};clamp();layout();draw();m.x=rect.x;m.y=rect.y;m.w=rect.w;save()});
+ $('nm').onchange=()=>{m.name=$('nm').value.trim();save()};$('ts').onchange=()=>{m.start=+$('ts').value;save()};$('te').onchange=()=>{m.end=+$('te').value;save()};
+ $('cf').onclick=()=>{m.name=$('nm').value.trim();m.x=rect.x;m.y=rect.y;m.w=rect.w;m.confirmed=true;save();render3()}}
+load().then(render);
+</script></body></html>

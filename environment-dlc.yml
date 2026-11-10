@@ -1,0 +1,40 @@
+# DeepLabCut 2.2.3 environment for inference and training (Python 3.7).
+# Pins measured on a working installation that restores TensorFlow-1-format DeepLabCut
+# snapshots (resnet_50, 2 body parts) and runs them on a GPU through tf.compat.v1.
+#
+# GPU: TensorFlow finds the CUDA libraries only when the environment's lib folder is on the
+# library path, e.g.  export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+# Without it TensorFlow falls back to the CPU silently.
+#
+# Note: deeplabcut==2.2.3 installs TensorFlow 2.x; the TensorFlow-1 snapshots load through the
+# compat.v1 path of TensorFlow 2.11.
+name: ata-dlc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7.12
+  - cudatoolkit=11.8.0
+  - cudnn=8.9.7.29
+  - hdf5=1.10.6
+  - ffmpeg=6.1.1
+  - pip
+  - pip:
+      - tensorflow==2.11.0
+      - deeplabcut==2.2.3
+      - numpy==1.21.6
+      - pandas==1.3.1
+      - scipy==1.7.0
+      - matplotlib==3.4.3
+      - h5py==2.10.0
+      - tables==3.7.0
+      - scikit-image==0.19.3
+      - scikit-learn==1.0.2
+      - statsmodels==0.12.2
+      - numba==0.56.4
+      - imgaug==0.4.0
+      - filterpy==2.0.0
+      - tensorpack==0.11
+      - tf-slim==1.1.0
+      - protobuf==3.19.6
+      - PyYAML==6.0
+      - tqdm==4.67.1
