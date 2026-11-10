@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atatracker"
-version = "0.1.0"
+version = "0.1.1"
 description = "ataTracker: asphyxia twitching analysis from DeepLabCut pose tracks: video cropping, labelling, fine-tuning, motion signals, HMM phase segmentation, review pages and figures."
 readme = "README.md"
 requires-python = ">=3.10"

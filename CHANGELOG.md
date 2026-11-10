@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.1.1 — 2026-11-11
+
+* Project renamed from ataAgent to ataTracker (distribution and import package `atatracker`; the `ata` command is unchanged). No change to the algorithms or outputs.
+
+## 0.1.0 — 2026-11-11
 
 First version, ported from the analysis scripts of the original study with the algorithms unchanged.
 
