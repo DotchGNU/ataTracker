@@ -80,10 +80,16 @@ class PhaseConfig:
 
 @dataclass
 class EndLineConfig:
-    """End line: last time the rolling max of the head amplitude reaches the threshold."""
+    """End line: last time the rolling max of a weighted chest-head amplitude reaches the threshold.
 
+    The signal is ``chest_weight * chest + head_weight * head``. The previous rule (head amplitude
+    only, 5-s window) is ``chest_weight=0, head_weight=1, window_s=5``.
+    """
+
+    chest_weight: float = 0.25
+    head_weight: float = 0.75
     threshold: float = 0.15
-    window_s: float = 5.0
+    window_s: float = 12.0
     search_after_post_s: float = 40.0
 
 
@@ -280,6 +286,11 @@ class Config:
                 raise ValueError(f"signal.{name} must be one of {MOTION_MODES}")
         if len(self.phase.start_prob) != 4:
             raise ValueError("phase.start_prob must have 4 entries (pre, chest, head, post)")
+        e = self.end_line
+        if e.chest_weight < 0 or e.head_weight < 0 or e.chest_weight + e.head_weight <= 0:
+            raise ValueError("end_line.chest_weight and head_weight must be >= 0 and not both 0")
+        if e.window_s <= 0:
+            raise ValueError("end_line.window_s must be > 0")
         if not self.inputs.coord_sets:
             raise ValueError("inputs.coord_sets must list at least one coordinate set")
 

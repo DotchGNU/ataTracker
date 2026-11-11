@@ -26,9 +26,11 @@ phase:   # 4-state left-to-right Poisson HMM pre -> chest -> head -> post (docs/
   rule_bin_s: 10.0   # initial paths: bin of the head-onset rule (s)
   rule_max_s: 300.0   # initial paths: last bin edge of the rule (s)
   leave_one_out: true   # a target that is also a reference recording is segmented by a model trained without it
-end_line:   # end line = last time the rolling max of the head amplitude >= threshold (docs/method.md section 4)
-  threshold: 0.15
-  window_s: 5.0   # rolling-max window (s, centred)
+end_line:   # end line = last time the rolling max of chest_weight * chest + head_weight * head >= threshold (docs/method.md section 4)
+  chest_weight: 0.25   # weight of the chest amplitude (0 with head_weight 1 and window_s 5 = the previous head-only rule)
+  head_weight: 0.75   # weight of the head amplitude
+  threshold: 0.15   # envelope threshold (normalised amplitude)
+  window_s: 12.0   # rolling-max window (s, centred)
   search_after_post_s: 40.0   # search up to the HMM post onset (or recording end) plus this (s)
 display:   # display-only traces (never used for counting)
   gate_tau_s: 3.0   # soft gate of the head trace before the head onset (s)

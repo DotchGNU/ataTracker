@@ -1,3 +1,3 @@
 """ataTracker: asphyxia twitching analysis from DeepLabCut pose tracks."""
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
