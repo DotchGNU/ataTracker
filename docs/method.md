@@ -72,10 +72,17 @@ both head onset and end line are NaN ("no head phase found").
 
 ## 4. End line
 
-`end = last time t in [head onset, stop + search_after_post_s]` at which the centred rolling
-maximum of the head amplitude `a` over `end_line.window_s` (5 s, `int(5 * fps)` frames,
-`min_periods=1`) is >= `end_line.threshold` (0.15); `stop` is the HMM post onset or, without one,
-the recording end; `search_after_post_s` = 40 s. If no frame qualifies, `end = stop`.
+Signal per frame: `s(t) = end_line.chest_weight * chest(t) + end_line.head_weight * head(t)`
+(0.25 and 0.75) from the normalised amplitudes of section 2. The envelope is the centred rolling
+maximum of `s` over `end_line.window_s` (12 s, `int(12 * fps)` frames, `min_periods=1`).
+
+`end = last time t in [head onset, stop + search_after_post_s]` at which the envelope is
+>= `end_line.threshold` (0.15); `stop` is the HMM post onset or, without one, the recording end;
+`search_after_post_s` = 40 s. If no frame qualifies, `end = stop`.
+
+The previous rule (head amplitude only, 5-s window, threshold 0.15) is the setting
+`chest_weight: 0`, `head_weight: 1`, `window_s: 5`. How the rule was chosen and how the two
+rules differ: [validation.md](validation.md).
 
 Derived per animal: chest phase = head onset (min), head phase = end - head onset (min),
 head peaks within [onset, end], chest peaks before the onset.
@@ -115,7 +122,7 @@ animals and the default checkpoint for all others (`inputs.checkpoint_choice`).
 
 **Settings search** (`ata evaluate grid`, optional): chest mode x head mode x peak threshold x
 percentile x likelihood mask (5 x 5 x 3 x 3 x 3 = 675 combinations by default), each with
-end-line threshold x window (4 x 3). Objectives without ground truth: (A) spread (median absolute
+end-line threshold x window (4 x 3; head amplitude only, `chest_weight = 0`). Objectives without ground truth: (A) spread (median absolute
 deviation) of end line minus manual last twitching, (B) share of animals whose head onset agrees
 within 0.3 min between two checkpoints, (C) share of animals without a usable head phase
 (< 10 head peaks). Rank = mean of the three ranks.
@@ -137,7 +144,8 @@ within 0.3 min between two checkpoints, (C) share of animals without a usable he
 | `phase.lambda_floor` / `empty_state_rate` | 0.01 / 0.1 | peaks per bin |
 | `phase.chest_onset_min_peaks` / `chest_onset_window_s` | 5 / 5 | peaks / s |
 | `phase.rule_bin_s` / `rule_max_s` | 10 / 300 | s |
-| `end_line.threshold` / `window_s` / `search_after_post_s` | 0.15 / 5 / 40 | amplitude / s / s |
+| `end_line.chest_weight` / `head_weight` | 0.25 / 0.75 | — |
+| `end_line.threshold` / `window_s` / `search_after_post_s` | 0.15 / 12 / 40 | amplitude / s / s |
 | `display.gate_tau_s` / `gate_floor` | 3 / 0 | s / — |
 | `quality.body_length_z` / `head_jump_px` / `likelihood_low` | 4 / 15 / 0.5 | z / px / — |
 
