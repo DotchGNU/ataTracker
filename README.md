@@ -45,7 +45,7 @@ with commands: [docs/workflow.md](docs/workflow.md).
   label-free tracking metrics, computed by a fixed, documented algorithm from the coordinates of
   a stated checkpoint.
 * **Are not**: ground truth. Phase boundaries have no independent reference; the end line is a
-  threshold rule on the head motion amplitude, and amplitudes depend on tracking quality and on
+  threshold rule on a weighted chest-head motion amplitude, and amplitudes depend on tracking quality and on
   the animal's size in the crop. Checkpoint choices are researcher decisions recorded in the
   checkpoint-choice csv and must be reported with the results.
 
@@ -125,7 +125,7 @@ and a `source_<name>.csv` with the plotted values; the Excel workbook uses formu
 
 On archived coordinates of the original study the phase step reproduces the original head onsets
 and end lines exactly (difference 0 for 3 animals, and 0 over all 38 animals of that analysis,
-including leave-one-out models and per-animal checkpoints): [docs/validation.md](docs/validation.md).
+including leave-one-out models and per-animal checkpoints; for version 0.2 also the weighted end-line rule, 17 + 12 animals): [docs/validation.md](docs/validation.md).
 `pytest` runs on synthetic data only.
 
 ## Dependencies and licenses

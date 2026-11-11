@@ -1,8 +1,9 @@
 import numpy as np
+import pytest
 
 from atatracker.common import load_coords
 from atatracker.config import config_from_dict
-from atatracker.phase import PhaseModel, end_line, fit_model, segment, state_onsets
+from atatracker.phase import PhaseModel, end_line, fit_model, segment, state_onsets, weighted_end_line
 from atatracker.pipeline import load_recording, load_reference
 from conftest import BOUNDS, FPS
 
@@ -59,3 +60,59 @@ def test_load_coords_selects_bodyparts(coord_dirs):
     d = load_coords(f)
     assert list(d.columns) == ["cx", "cy", "cl", "hx", "hy", "hl"]
     assert len(d) == int(300 * FPS)
+
+
+def test_end_line_default_is_weighted_rule(config_dict):
+    cfg = config_from_dict(config_dict)
+    e = cfg.end_line
+    assert (e.chest_weight, e.head_weight, e.threshold, e.window_s, e.search_after_post_s) == (0.25, 0.75, 0.15, 12.0, 40.0)
+
+
+def test_weighted_end_line_counts_chest_and_head():
+    fps = 10.0
+    chest, head = np.zeros(2000), np.zeros(2000)
+    head[[200, 400]] = [0.5, 0.5]  # last head jerk at 40 s
+    chest[1000] = 1.0  # chest jerk at 100 s: 0.25 * 1.0 = 0.25 >= 0.15
+    # weighted rule: the late chest jerk is the last qualifying time (100 s + half of the 12-s window)
+    e = weighted_end_line(chest, head, 10.0, 0.15, 12.0, 190.0, fps, 0.25, 0.75)
+    assert abs(e - (100.0 + 6.0)) <= 0.1
+    # head only: the chest jerk is ignored (40 s + half of the window)
+    e0 = weighted_end_line(chest, head, 10.0, 0.15, 12.0, 190.0, fps, 0.0, 1.0)
+    assert abs(e0 - (40.0 + 6.0)) <= 0.1
+    # a chest-only jerk below weight * amplitude < threshold does not count
+    assert np.isnan(weighted_end_line(chest * 0.5, np.zeros(2000), 10.0, 0.15, 12.0, 190.0, fps, 0.25, 0.75))
+
+
+def test_weighted_end_line_search_interval():
+    fps = 10.0
+    head = np.zeros(1000)
+    head[800] = 1.0  # 80 s
+    assert np.isnan(weighted_end_line(np.zeros(1000), head, 10.0, 0.15, 2.0, 50.0, fps))  # after the limit
+    assert not np.isnan(weighted_end_line(np.zeros(1000), head, 10.0, 0.15, 2.0, 90.0, fps))
+
+
+def test_head_only_wrapper_equals_zero_chest_weight():
+    rng = np.random.default_rng(1)
+    head = np.minimum(rng.exponential(0.05, 3000), 1.0)
+    chest = rng.random(3000)
+    a = end_line(head, 5.0, 0.15, 5.0, 250.0, 10.0)
+    b = weighted_end_line(chest, head, 5.0, 0.15, 5.0, 250.0, 10.0, 0.0, 1.0)
+    assert a == b
+
+
+def test_previous_rule_by_configuration(config_dict, coord_dirs):
+    cfg = config_from_dict(dict(config_dict, end_line=dict(chest_weight=0.0, head_weight=1.0, window_s=5.0)))
+    ref = load_reference(cfg)
+    model = fit_model({n: r.sig for n, r in ref.items()}, cfg.phase)
+    rec = load_recording("animalA", "model-1k", str(next(coord_dirs["targets"].glob("*.csv"))), cfg)
+    res = segment(rec.sig, model, cfg.phase.bin_s, cfg.end_line)
+    assert abs(res.end_s - (BOUNDS[-1][2] + 2.5)) <= 0.5
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [dict(chest_weight=-0.1), dict(chest_weight=0.0, head_weight=0.0), dict(window_s=0.0)],
+)
+def test_end_line_config_validation(config_dict, bad):
+    with pytest.raises(ValueError):
+        config_from_dict(dict(config_dict, end_line=bad))
