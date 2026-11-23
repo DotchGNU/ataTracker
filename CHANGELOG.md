@@ -1,21 +1,47 @@
 # Changelog
 
-## 0.2.0 — 2026-11-12
+## 0.2.0 — 2026-11-23
 
-* **End line: weighted chest-head rule is now the default.** The envelope is the centred rolling
-  maximum of `chest_weight * chest + head_weight * head` (0.25 / 0.75) over a 12-s window; the end
-  line is the last time it reaches 0.15 between the head onset and the HMM post onset + 40 s
-  (new function `atatracker.phase.weighted_end_line`; new keys `end_line.chest_weight` and
-  `end_line.head_weight`, `end_line.window_s` default 5 -> 12). **Results of `ata phase` change
-  for the same coordinates**: end lines are later than with version 0.1. The previous rule is
-  reproduced exactly with `end_line: {chest_weight: 0, head_weight: 1, window_s: 5}`.
-  `atatracker.phase.end_line` (head amplitude only) is kept.
-* Configuration validation of the end-line weights (non-negative, not both 0) and window (> 0).
-* Documentation of the rule and its selection (docs/method.md section 4, docs/validation.md);
-  regression of both rules against the original analysis tables (17 reference recordings with
-  leave-one-out HMMs, 12 non-reference recordings): all differences 0.
-* Tests for the weighted end line, the default values, the previous rule by configuration and the validation of the keys.
-* The HMM (`atatracker.phase.fit_model`, `PhaseModel`, `state_onsets`) is unchanged.
+Results of `ata phase` change for the same coordinates (offset rule); configuration files of
+version 0.1 need the changes listed under *Configuration*.
+
+* **Frame-rate check before the analysis.** New step `ata check-fps`: ffprobe reads
+  `r_frame_rate`, `avg_frame_rate` and the measured rate `nb_frames / duration` (frames counted
+  when the container has no `nb_frames`) of every original video (`fps_check.original_dirs`) and
+  every DeepLabCut input video (`fps_check.dlc_input_dirs`) and stops with a per-video table when
+  any rate deviates from `signal.fps` by more than `fps_check.tolerance_rel` (0.005). It writes
+  `source_fps_check.csv` and records the result in `run_manifest.json`. `ata phase` and
+  `ata screen` run it first (`fps_check.require`, default true) and stop before any analysis. The
+  frame rate is never changed by the package; the default stays 30000/1001 frames/s.
+* **Stored HMM by default.** `ata phase` and `ata screen` load a stored model
+  (`phase.model_file`; `builtin` = the reference model shipped in `atatracker/data`, trained on 17
+  recordings of the original study, training names replaced by anonymous IDs, parameter hash
+  `9a9100d891fa273c`) instead of fitting one on every run. Loading stops on a missing file, a
+  parameter-hash mismatch or a configuration that differs from the one the model was trained
+  under (signal modes, peak threshold, percentile, likelihood mask, peak distances, bin width,
+  frame rate). Training recordings of the model are segmented with stored leave-one-out models
+  (`phase.loo_dir`); a missing one stops the run. `phase.refit: true` / `--refit` fits on
+  `inputs.reference_dir` as in version 0.1. New `ata hmm fit` (export a full model and its
+  leave-one-out models) and `ata hmm check`; model file format in docs/hmm-model.md.
+  `phase_model.json` uses that format; the per-animal table has `hmm_params_hash`; the run
+  manifest records the model under `hmm`.
+* **Offset refinement (weighted chest-head rule) is the default.** The step after the HMM that
+  places the end of twitching is called offset refinement (`atatracker.phase.offset_refinement`).
+  The envelope is the centred rolling maximum of `0.25 * chest + 0.75 * head` over 12 s; the
+  offset is the last time it reaches 0.15 between the head onset and the HMM post onset + 40 s
+  (post onset, or recording end, if none). Offsets are later than with the head-only 5-s rule of
+  version 0.1, which remains available (`chest_weight: 0`, `head_weight: 1`, `window_s: 5`;
+  function `atatracker.phase.end_line`). The output column stays `end_min`.
+* **Configuration.** New sections `fps_check` and keys `phase.model_file`, `phase.loo_dir`,
+  `phase.refit`; the section `end_line` is renamed `offset_refinement` with new keys
+  `chest_weight`, `head_weight` and `window_s` 5 -> 12. A file with the old section name is
+  accepted only when it states both weights (a version-0.1 section without them is refused, so
+  the old window is never combined with the new weights). `inputs.reference_dir` defaults to
+  null: it is needed to fit, and otherwise only sets the quality-flag thresholds.
+* Regression on archived coordinates of the original study: head onset, post onset and offset
+  identical (difference 0) for 35 animals of three cohorts, against the original scripts and
+  master workbooks (docs/validation.md). Tests for the frame-rate check (stand-in ffprobe), the
+  stored model and its checks, leave-one-out models, export, and the offset rule.
 
 ## 0.1.1 — 2026-11-11
 
@@ -34,8 +60,8 @@ First version, ported from the analysis scripts of the original study with the a
   by a standalone Python 3.7 runner in the DeepLabCut environment; snapshots are selected through
   temporary configs, projects are never modified.
 * `ata phase`: motion signals (chest |dy|, head max(|dx|, |dy|) by default), 1-s peak counts,
-  4-state left-to-right Poisson HMM (hmmlearn `PoissonHMM`), end line from the 5-s rolling max
-  of the head amplitude; one checkpoint per animal; twitching plots; `phase_model.json`.
+  4-state left-to-right Poisson HMM (hmmlearn `PoissonHMM`), offset (called end line in this
+  version) from the 5-s rolling max of the head amplitude; one checkpoint per animal; twitching plots; `phase_model.json`.
 * `ata screen` + `ata review picker` / `choices`: per-animal checkpoint screening and selection page.
 * `ata review review` / `viewer`: per-set twitching review page and synchronised video viewer.
 * `ata evaluate models` / `grid`: label-free tracking metrics, label error, settings search.

@@ -3,6 +3,7 @@
 ```
 raw videos ─► crop ─► label ─► fine-tune ─► infer ─► phase ─► screen / review checkpoints ─► phase (final) ─► figures
              ata crop  ata label  ata dlc        ata dlc   ata phase  ata screen, ata review          ata phase        ata figures
+                                                           (runs ata check-fps first)
 ```
 
 Two environments are used (see the README): `ata-dlc` (DeepLabCut 2.2.3, Python 3.7) for the
@@ -70,16 +71,39 @@ Use one output folder per checkpoint, named after its tag (docs/model-weights.md
 `inputs.coord_sets`, the default checkpoint first. For the GPU, `LD_LIBRARY_PATH` must contain
 the `lib` folder of `ata-dlc` (environment-dlc.yml).
 
-## 5. Phase analysis — `ata phase`
+## 5. Frame-rate check — `ata check-fps`
+
+```bash
+ata check-fps -c my-config.yaml --out /path/to/output/fps-check
+ata check-fps -c my-config.yaml --out /path/to/output/fps-check_copies --dlc-input /path/to/reencoded_copies   # any folder, ad hoc
+```
+
+List the original recordings in `fps_check.original_dirs` and every video DeepLabCut analysed
+(and the intermediate copies they were made from) in `fps_check.dlc_input_dirs`. The step stops
+with a per-video table when `r_frame_rate`, `avg_frame_rate` or `nb_frames / duration` deviates
+from `signal.fps` by more than `fps_check.tolerance_rel` (docs/method.md section 1). The package
+never changes the rate: re-encode the videos at the right rate, or set `signal.fps` to the true
+rate (the stored HMM then stops, because it was trained at 30000/1001 frames/s; fit your own model
+with `ata hmm fit`). `ata phase` and `ata screen` run the same check first
+(`fps_check.require: true`).
+
+## 6. Phase analysis — `ata phase`
 
 ```bash
 ata phase -c my-config.yaml --out /path/to/output/phase
+ata phase -c my-config.yaml --out /path/to/output/phase_refit --refit   # fit the HMM on inputs.reference_dir instead
 ```
 
-Trains the HMM on `inputs.reference_dir`, segments every animal of the first coordinate set and
-writes the per-animal table, twitching plots and `phase_model.json` (docs/outputs.md).
+Applies the stored HMM (`phase.model_file`; checked against the configuration), segments every
+animal of the first coordinate set, places the offset by offset refinement and writes the
+per-animal table, twitching plots and `phase_model.json` (docs/outputs.md). Own model:
 
-## 6. Screen checkpoints for flagged animals — `ata screen`, `ata review`
+```bash
+ata hmm fit   -c my-config.yaml --out /path/to/hmm-model   # needs inputs.reference_dir
+ata hmm check -c my-config.yaml                           # after setting phase.model_file: /path/to/hmm-model/hmm_full.json
+```
+
+## 7. Screen checkpoints for flagged animals — `ata screen`, `ata review`
 
 1. Look at `metric_flags` in `source_phase-per-animal.csv` and at the review page:
    ```bash
@@ -105,7 +129,7 @@ writes the per-animal table, twitching plots and `phase_model.json` (docs/output
 5. Set `inputs.checkpoint_choice` to that csv and run `ata phase` again into a new folder. Animals
    not in the csv keep the default checkpoint (all snapshots of the default stay available).
 
-## 7. Figures — `ata figures`
+## 8. Figures — `ata figures`
 
 ```bash
 ata figures all -c my-config.yaml --phase-dir /path/to/output/phase --labels /path/to/row-labels.csv
