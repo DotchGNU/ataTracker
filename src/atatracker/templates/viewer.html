@@ -3,7 +3,7 @@
 <div><b>Model</b> __TAG__ &nbsp; <b>Sample</b> <select id="sm"></select> <span class="s" id="info"></span></div>
 <div id="wrap"><video id="v" controls muted width="960" height="544"></video><canvas id="ov" width="960" height="544"></canvas></div>
 <canvas id="pl" width="960" height="220"></canvas>
-<div class="s">Top: video with CHEST (blue) and HEAD (red) pointers from the DLC output. Bottom: normalised motion amplitude per frame (__SIG__; chest blue, head red; x = minutes); dashed lines = head onset and end line; the cursor and dots follow the video. Click the plot to jump. Dim pointer = head likelihood &lt; 0.5.</div>
+<div class="s">Top: video with CHEST (blue) and HEAD (red) pointers from the DLC output. Bottom: normalised motion amplitude per frame (__SIG__; chest blue, head red; x = minutes); dashed lines = head onset and offset (last twitching); the cursor and dots follow the video. Click the plot to jump. Dim pointer = head likelihood &lt; 0.5.</div>
 <script>
 const IDX=/*INDEX*/[],$=id=>document.getElementById(id),v=$("v"),ov=$("ov"),o=ov.getContext("2d"),pl=$("pl"),p=pl.getContext("2d");let D=null;
 $("sm").innerHTML=IDX.map((x,i)=>`<option value="${i}">${x.cohort}  ${x.sample}</option>`).join("");

@@ -127,7 +127,7 @@ def run_phase(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots: 
         rec = load_recording(name, tag, sets[tag][name], cfg)
         loo = cfg.phase.leave_one_out and name in ref
         m = fit_reference(ref, cfg, exclude=name) if loo else model
-        res = segment(rec.sig, m, cfg.phase.bin_s, cfg.end_line)
+        res = segment(rec.sig, m, cfg.phase.bin_s, cfg.offset_refinement)
         row = phase_row(rec, res)
         row.update(group=groups.get(name, ""), selection="chosen" if name in choice else "default", hmm_leave_one_out=loo)
         mv = manual.get(name, np.nan)
@@ -204,7 +204,7 @@ def run_screen(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots:
                 LOG.warning("%s: no coordinates in set %s", name, tag)
                 continue
             rec = load_recording(name, tag, files[name], cfg)
-            res = segment(rec.sig, model, cfg.phase.bin_s, cfg.end_line)
+            res = segment(rec.sig, model, cfg.phase.bin_s, cfg.offset_refinement)
             fam, it = split_tag(tag)
             row = phase_row(rec, res)
             row.update(tag=tag, family=fam, iteration=it, set_order=k, is_default=(k == 0))

@@ -1,4 +1,4 @@
-"""Per-animal twitching plot: raw amplitudes (top) and display traces (bottom), markers at head onset and end line."""
+"""Per-animal twitching plot: raw amplitudes (top) and display traces (bottom), markers at head onset and offset."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def plot_twitching(src: pd.DataFrame, out_dir: str | Path, name: str, cfg: Confi
     cfg : Config
         Colours, x range and dpi from ``cfg.figures``.
     markers : {"triangles", "lines"}
-        Head onset / end line as triangles above the top axis, or dashed lines in both panels.
+        Head onset / offset as triangles above the top axis, or dashed lines in both panels.
     """
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D

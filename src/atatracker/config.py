@@ -7,6 +7,7 @@ Every tunable value of the package lives in one of the dataclasses below and in
 from __future__ import annotations
 
 import dataclasses
+import logging
 import typing
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -15,6 +16,7 @@ from typing import Any
 
 import yaml
 
+LOG = logging.getLogger("atatracker")
 MOTION_MODES = ("y", "x", "xy", "max", "pca")
 
 
@@ -79,11 +81,12 @@ class PhaseConfig:
 
 
 @dataclass
-class EndLineConfig:
-    """End line: last time the rolling max of a weighted chest-head amplitude reaches the threshold.
+class OffsetRefinementConfig:
+    """Offset refinement: the end of twitching (last twitching) after the HMM.
 
-    The signal is ``chest_weight * chest + head_weight * head``. The previous rule (head amplitude
-    only, 5-s window) is ``chest_weight=0, head_weight=1, window_s=5``.
+    The offset is the last time the centred rolling maximum of ``chest_weight * chest +
+    head_weight * head`` reaches ``threshold``. The head-only rule of version 0.1 is
+    ``chest_weight=0, head_weight=1, window_s=5``.
     """
 
     chest_weight: float = 0.25
@@ -269,7 +272,7 @@ class Config:
     output_dir: str = "/path/to/output"
     signal: SignalConfig = field(default_factory=SignalConfig)
     phase: PhaseConfig = field(default_factory=PhaseConfig)
-    end_line: EndLineConfig = field(default_factory=EndLineConfig)
+    offset_refinement: OffsetRefinementConfig = field(default_factory=OffsetRefinementConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
     quality: QualityConfig = field(default_factory=QualityConfig)
     inputs: InputConfig = field(default_factory=InputConfig)
@@ -286,11 +289,11 @@ class Config:
                 raise ValueError(f"signal.{name} must be one of {MOTION_MODES}")
         if len(self.phase.start_prob) != 4:
             raise ValueError("phase.start_prob must have 4 entries (pre, chest, head, post)")
-        e = self.end_line
+        e = self.offset_refinement
         if e.chest_weight < 0 or e.head_weight < 0 or e.chest_weight + e.head_weight <= 0:
-            raise ValueError("end_line.chest_weight and head_weight must be >= 0 and not both 0")
+            raise ValueError("offset_refinement.chest_weight and head_weight must be >= 0 and not both 0")
         if e.window_s <= 0:
-            raise ValueError("end_line.window_s must be > 0")
+            raise ValueError("offset_refinement.window_s must be > 0")
         if not self.inputs.coord_sets:
             raise ValueError("inputs.coord_sets must list at least one coordinate set")
 
@@ -321,9 +324,32 @@ def _build(cls: type, data: Any) -> Any:
     return cls(**kwargs)
 
 
+def _rename_legacy_keys(data: dict[str, Any]) -> dict[str, Any]:
+    """Accept the section name of version 0.1 (``end_line``) for ``offset_refinement``."""
+    if "end_line" not in data:
+        return data
+    if "offset_refinement" in data:
+        raise KeyError("give either offset_refinement or the old name end_line, not both")
+    old = data["end_line"] or {}
+    if not {"chest_weight", "head_weight"} <= set(old):
+        # a version-0.1 file (head-only rule) would silently mix the old window with the new weights
+        raise KeyError(
+            "configuration section end_line (version 0.1) has no chest_weight / head_weight: rename it to "
+            "offset_refinement and state the rule (version-0.1 rule: chest_weight 0, head_weight 1, window_s 5; "
+            "default: 0.25, 0.75, 12)"
+        )
+    LOG.warning("configuration section end_line is now called offset_refinement; please rename it")
+    data = dict(data)
+    data["offset_refinement"] = data.pop("end_line")
+    return data
+
+
 def config_from_dict(data: dict[str, Any] | None) -> Config:
-    """Build a :class:`Config` from a (possibly partial) mapping; missing keys keep their defaults."""
-    cfg = _build(Config, data or {})
+    """Build a :class:`Config` from a (possibly partial) mapping; missing keys keep their defaults.
+
+    The section name ``end_line`` of version 0.1 is accepted for ``offset_refinement`` (with a warning).
+    """
+    cfg = _build(Config, _rename_legacy_keys(data or {}))
     cfg.validate()
     return cfg
 

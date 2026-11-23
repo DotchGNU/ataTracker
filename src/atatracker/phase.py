@@ -3,8 +3,9 @@
 The per-second chest and head peak counts of a recording are segmented by a four-state,
 left-to-right Poisson hidden Markov model (``hmmlearn.hmm.PoissonHMM``). The model is
 trained on a reference set of recordings and applied to every target recording. The head
-onset is the first second of the head state; the end line is the last time the rolling
-maximum of a weighted chest-head amplitude reaches a threshold.
+onset is the first second of the head state. Offset refinement then places the end of
+twitching (the offset, last twitching) at the last time the rolling maximum of a weighted
+chest-head amplitude reaches a threshold.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .config import DisplayConfig, EndLineConfig, PhaseConfig
+from .config import DisplayConfig, OffsetRefinementConfig, PhaseConfig
 from .signal import Signals
 
 LOG = logging.getLogger("atatracker")
@@ -169,7 +170,7 @@ def state_onsets(path: np.ndarray, bin_s: float = 1.0) -> list[float]:
     return [float(np.argmax(path == k)) * bin_s if (path == k).any() else np.nan for k in range(K)]
 
 
-def weighted_end_line(
+def offset_refinement(
     chest: np.ndarray,
     head: np.ndarray,
     t0_s: float,
@@ -180,51 +181,67 @@ def weighted_end_line(
     chest_weight: float = 0.25,
     head_weight: float = 0.75,
 ) -> float:
-    """End line (last twitching) from a weighted chest-head amplitude.
+    """Offset refinement: end of twitching (last twitching) from a weighted chest-head amplitude.
 
-    The signal is ``s = chest_weight * chest + head_weight * head`` per frame; its centred rolling
-    maximum over ``int(window_s * fps)`` frames (``min_periods=1``) is the envelope. The end line is
+    The signal is ``x = chest_weight * chest + head_weight * head`` per frame; its centred rolling
+    maximum over ``int(window_s * fps)`` frames (``min_periods=1``) is the envelope. The offset is
     the last time in ``[t0_s, limit_s]`` at which the envelope is ``>= threshold``.
 
     Parameters
     ----------
     chest, head : ndarray
-        Normalised amplitude per frame (0-1), same length.
+        Normalised amplitude per frame (dimensionless, 0-1), same length.
     t0_s, limit_s : float
         Search interval (s).
     threshold : float
-        Envelope threshold, same units as the amplitude.
+        Envelope threshold (normalised amplitude).
     window_s : float
         Rolling-max window (s).
     fps : float
         Frame rate (frames/s).
     chest_weight, head_weight : float
-        Weights of the two amplitudes.
+        Weights of the two amplitudes (dimensionless).
 
     Returns
     -------
     float
-        End line (s), or NaN if no frame of the interval reaches the threshold.
+        Offset (s), or NaN if no frame of the interval reaches the threshold.
     """
-    s = chest_weight * np.asarray(chest, float) + head_weight * np.asarray(head, float)
+    x = chest_weight * np.asarray(chest, float) + head_weight * np.asarray(head, float)
     w = int(window_s * fps)
-    env = pd.Series(s).rolling(w, center=True, min_periods=1).max().values
+    env = pd.Series(x).rolling(w, center=True, min_periods=1).max().values
     idx = np.where(env >= threshold)[0]
     idx = idx[(idx / fps >= t0_s) & (idx / fps <= limit_s)]
     return float(idx.max() / fps) if len(idx) else np.nan
 
 
 def end_line(head: np.ndarray, t0_s: float, threshold: float, window_s: float, limit_s: float, fps: float) -> float:
-    """Head-amplitude-only end line (``chest_weight = 0``, ``head_weight = 1`` of :func:`weighted_end_line`).
+    """Head-only offset rule of version 0.1 (:func:`offset_refinement` with ``chest_weight=0``, ``head_weight=1``).
 
-    Returns NaN if there is no qualifying frame in ``[t0_s, limit_s]``.
+    Parameters
+    ----------
+    head : ndarray
+        Normalised head amplitude per frame (0-1).
+    t0_s, limit_s : float
+        Search interval (s).
+    threshold : float
+        Envelope threshold (normalised amplitude).
+    window_s : float
+        Rolling-max window (s).
+    fps : float
+        Frame rate (frames/s).
+
+    Returns
+    -------
+    float
+        Offset (s), or NaN if there is no qualifying frame in ``[t0_s, limit_s]``.
     """
-    return weighted_end_line(np.zeros(len(head)), head, t0_s, threshold, window_s, limit_s, fps, 0.0, 1.0)
+    return offset_refinement(np.zeros(len(head)), head, t0_s, threshold, window_s, limit_s, fps, 0.0, 1.0)
 
 
 @dataclass
 class PhaseResult:
-    """Phase boundaries of one recording (all in s)."""
+    """Phase boundaries of one recording (all in s); ``end_s`` is the offset from offset refinement."""
 
     chest_on_s: float
     head_on_s: float
@@ -232,29 +249,29 @@ class PhaseResult:
     end_s: float
 
 
-def segment(sig: Signals, model: PhaseModel, bin_s: float, end_cfg: EndLineConfig) -> PhaseResult:
-    """Head onset and end line of one recording.
+def segment(sig: Signals, model: PhaseModel, bin_s: float, off_cfg: OffsetRefinementConfig) -> PhaseResult:
+    """HMM phase boundaries and the refined offset of one recording.
 
-    The end line (:func:`weighted_end_line`, weights, window and threshold from ``end_cfg``) is
+    The offset (:func:`offset_refinement`, weights, window and threshold from ``off_cfg``) is
     searched from the head onset up to the HMM post onset (or the recording end) plus
     ``search_after_post_s``; if no frame reaches the threshold the post onset (or the recording
-    end) is used. Without a head state both are NaN.
+    end) is used. Without a head state head onset and offset are NaN.
     """
     e = state_onsets(model.predict(sig.counts), bin_s)
     hon, post = e[2], e[3]
     if np.isnan(hon):
         return PhaseResult(e[1], np.nan, post, np.nan)
     stop = post if not np.isnan(post) else sig.duration_s
-    end = weighted_end_line(
+    end = offset_refinement(
         sig.chest,
         sig.head,
         hon,
-        end_cfg.threshold,
-        end_cfg.window_s,
-        stop + end_cfg.search_after_post_s,
+        off_cfg.threshold,
+        off_cfg.window_s,
+        stop + off_cfg.search_after_post_s,
         sig.fps,
-        end_cfg.chest_weight,
-        end_cfg.head_weight,
+        off_cfg.chest_weight,
+        off_cfg.head_weight,
     )
     return PhaseResult(e[1], hon, post, end if not np.isnan(end) else stop)
 
@@ -262,7 +279,7 @@ def segment(sig: Signals, model: PhaseModel, bin_s: float, end_cfg: EndLineConfi
 def display_traces(
     chest: np.ndarray, head: np.ndarray, t_s: np.ndarray, head_on_s: float, end_s: float, cfg: DisplayConfig
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Display-only traces: soft gate on the head trace before the head onset, flat floor after the end line.
+    """Display-only traces: soft gate on the head trace before the head onset, flat floor after the offset.
 
     ``head * (floor + (1 - floor) / (1 + exp(-(t - head_on) / tau)))``; after ``end_s`` the chest
     and head traces are set to ``post_chest_level`` and ``post_head_level`` so the recording

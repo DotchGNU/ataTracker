@@ -1,9 +1,9 @@
 """Optional settings search without ground truth (docs/method.md, section 6).
 
 Varied: chest and head signal modes, peak threshold, normalisation percentile, likelihood mask
-and, in a second stage, end-line threshold and window. Objectives per combination:
+and, in a second stage, the threshold and window of the head-only offset rule. Objectives per combination:
 
-A  spread of (end line - manual last twitching) over recordings with a manual value (median
+A  spread of (offset - manual last twitching) over recordings with a manual value (median
    absolute deviation, so a constant definition offset does not count);
 B  share of animals whose head onset agrees within ``onset_agreement_min`` (min) between the two
    coordinate sets named in ``grid.compare_sets``;
@@ -102,7 +102,7 @@ def run_grid(cfg: Config, out_dir: str | Path, overwrite: bool = False) -> pd.Da
                 if np.isnan(hon):
                     return np.nan
                 stop = post if not np.isnan(post) else s.duration_s
-                e = end_line(s.head, hon, et, ew, stop + c.end_line.search_after_post_s, s.fps)
+                e = end_line(s.head, hon, et, ew, stop + c.offset_refinement.search_after_post_s, s.fps)
                 return e if not np.isnan(e) else stop
 
             d_ref = [end_of(s, *bref[n]) - manual[n] for n, s in ref.items() if n in manual]
