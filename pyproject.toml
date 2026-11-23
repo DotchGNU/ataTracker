@@ -52,7 +52,7 @@ ata = "atatracker.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"atatracker" = ["templates/*.html", "data/*.xml"]
+"atatracker" = ["templates/*.html", "data/*.xml", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

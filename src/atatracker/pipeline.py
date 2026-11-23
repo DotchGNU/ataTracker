@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from .common import list_coord_files, load_coords, prepare_step_dir, write_csv, 
 from .config import Config, config_to_dict
 from .evaluate.metrics import FLAG_METRICS, flag_against_reference, quality_metrics
 from .fpscheck import require_fps_check
+from .hmmstore import StoredModels, load_store, params_hash
 from .phase import PhaseModel, PhaseResult, fit_model, segment
 from .signal import Signals, compute_signals
 
@@ -43,6 +45,8 @@ def load_recording(name: str, tag: str, path: str, cfg: Config) -> Recording:
 
 def load_reference(cfg: Config) -> dict[str, Recording]:
     """All recordings of ``inputs.reference_dir`` (the HMM training set)."""
+    if not cfg.inputs.reference_dir:
+        raise ValueError("inputs.reference_dir is not set; it is needed to fit the HMM (phase.refit, ata hmm fit)")
     files = list_coord_files(
         cfg.inputs.reference_dir, cfg.inputs.reference_glob or cfg.inputs.coord_glob, cfg.inputs.name_separator
     )
@@ -54,6 +58,54 @@ def load_reference(cfg: Config) -> dict[str, Recording]:
 def fit_reference(ref: dict[str, Recording], cfg: Config, exclude: str | None = None) -> PhaseModel:
     """Fit the phase model on the reference recordings, optionally leaving one out."""
     return fit_model({n: r.sig for n, r in ref.items() if n != exclude}, cfg.phase)
+
+
+class PhaseModels:
+    """The HMM applied to the targets: the stored model (default) or a model fitted on the reference recordings.
+
+    Parameters
+    ----------
+    cfg : Config
+        ``phase.refit`` false: load ``phase.model_file`` (checked against the configuration) and use
+        its stored leave-one-out models; ``inputs.reference_dir`` is optional and only sets the
+        quality-flag thresholds. ``phase.refit`` true: fit on ``inputs.reference_dir`` and refit
+        without the target for leave-one-out.
+    """
+
+    def __init__(self, cfg: Config) -> None:
+        self.cfg = cfg
+        self.store: StoredModels | None = None
+        if cfg.phase.refit:
+            LOG.warning("phase.refit: fitting the HMM on inputs.reference_dir instead of loading the stored model")
+            self.ref = load_reference(cfg)
+            self.full = fit_reference(self.ref, cfg)
+            self.training = set(self.ref)
+        else:
+            self.store = load_store(cfg)
+            self.full = self.store.full
+            self.ref = load_reference(cfg) if cfg.inputs.reference_dir else {}
+            self.training = set(self.store.training_names)
+
+    def for_target(self, name: str) -> tuple[PhaseModel, bool]:
+        """Model for recording ``name`` and whether it is a leave-one-out model."""
+        if not (self.cfg.phase.leave_one_out and name in self.training):
+            return self.full, False
+        if self.store is None:
+            return fit_reference(self.ref, self.cfg, exclude=name), True
+        return self.store.loo(name, self.cfg), True
+
+    def save_full(self, path: Path) -> None:
+        """Write the model applied to non-training targets (stored record unchanged, or the fitted model)."""
+        if self.store is not None:
+            path.write_text(json.dumps(self.store.full_record, indent=1), encoding="utf-8")
+        else:
+            self.full.save(path, self.cfg)
+
+    def manifest(self) -> dict[str, object]:
+        """Record of the model for ``run_manifest.json``."""
+        if self.store is not None:
+            return self.store.manifest()
+        return dict(source="refit", params_hash=params_hash(self.full.params()), n_training=len(self.training))
 
 
 def checkpoint_choice(cfg: Config) -> dict[str, str]:
@@ -71,7 +123,7 @@ def _lookup(path: str | None, key: str, value: str) -> dict[str, object]:
     return dict(zip(t[key].astype(str), t[value], strict=True))
 
 
-def phase_row(rec: Recording, res: PhaseResult) -> dict[str, object]:
+def phase_row(rec: Recording, res: PhaseResult, model: PhaseModel | None = None) -> dict[str, object]:
     """Per-animal result row (times in min unless the column name says s)."""
     hon, end = res.head_on_s, res.end_s
     has = not np.isnan(hon)
@@ -91,6 +143,7 @@ def phase_row(rec: Recording, res: PhaseResult) -> dict[str, object]:
         head_phase_min=(end - hon) / 60,
         head_peaks_in_head_phase=int(((sig.head_peaks_s >= hon) & (sig.head_peaks_s <= end)).sum()) if has else 0,
         chest_peaks_in_chest_phase=int((sig.chest_peaks_s < hon).sum()) if has else 0,
+        hmm_params_hash=params_hash(model.params()) if model is not None else "",
         **rec.quality,
     )
 
@@ -100,18 +153,20 @@ def run_phase(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots: 
 
     Targets are the animals of the first coordinate set; an animal listed in
     ``inputs.checkpoint_choice`` takes its coordinates from the set with that tag. The HMM is
-    trained on all reference recordings; a target that is itself a reference recording is
-    segmented with a model trained on the other reference recordings (``phase.leave_one_out``).
+    the stored model of ``phase.model_file`` (or, with ``phase.refit``, a model fitted on the
+    reference recordings); a target that is a training recording of that model is segmented with
+    a model trained without it (``phase.leave_one_out``). The frame-rate check runs first.
 
-    Writes ``phase_model.json``, ``source_phase-per-animal.csv``, twitching plots
+    Writes ``source_fps_check.csv``, ``phase_model.json`` (the full model applied, model-file
+    format), ``source_phase-per-animal.csv``, twitching plots
     (``twitching/``), the phase-duration bar plot and ``run_manifest.json``.
     """
     started = _dt.datetime.now()
     out = prepare_step_dir(out_dir, overwrite)
     fps_rec = require_fps_check(cfg, out, "phase")
-    ref = load_reference(cfg)
-    model = fit_reference(ref, cfg)
-    model.save(out / "phase_model.json")
+    models = PhaseModels(cfg)
+    ref = models.ref
+    models.save_full(out / "phase_model.json")
     sets = {s.tag: list_coord_files(s.dir, cfg.inputs.coord_glob, cfg.inputs.name_separator) for s in cfg.inputs.coord_sets}
     default_tag = cfg.inputs.coord_sets[0].tag
     choice = checkpoint_choice(cfg)
@@ -120,17 +175,16 @@ def run_phase(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots: 
         raise KeyError(f"checkpoint_choice names tags without a coordinate set: {unknown}")
     groups = _lookup(cfg.inputs.groups_csv, "animal", "group")
     manual = _lookup(cfg.inputs.manual_csv, "animal", "manual_last_s")
-    ref_max = pd.DataFrame([r.quality for r in ref.values()]).max().to_dict()
+    ref_max = pd.DataFrame([r.quality for r in ref.values()]).max().to_dict() if ref else {}
     rows, recs = [], {}
     for name in sorted(sets[default_tag]):
         tag = choice.get(name, default_tag)
         if name not in sets[tag]:
             raise FileNotFoundError(f"{name}: no coordinates in set {tag}")
         rec = load_recording(name, tag, sets[tag][name], cfg)
-        loo = cfg.phase.leave_one_out and name in ref
-        m = fit_reference(ref, cfg, exclude=name) if loo else model
+        m, loo = models.for_target(name)
         res = segment(rec.sig, m, cfg.phase.bin_s, cfg.offset_refinement)
-        row = phase_row(rec, res)
+        row = phase_row(rec, res, m)
         row.update(group=groups.get(name, ""), selection="chosen" if name in choice else "default", hmm_leave_one_out=loo)
         mv = manual.get(name, np.nan)
         row["manual_last_s"] = float(mv) if mv == mv else np.nan
@@ -146,10 +200,13 @@ def run_phase(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots: 
         LOG.info("%s [%s] head onset %.3f min, end %.3f min", name, tag, row["head_on_min"], row["end_min"])
     table = pd.DataFrame(rows)
     write_csv(table, out / "source_phase-per-animal.csv")
-    write_csv(
-        pd.DataFrame({"metric": list(FLAG_METRICS), "reference_max": [ref_max[m] for m in FLAG_METRICS]}),
-        out / "source_reference-quality-max.csv",
-    )
+    if ref_max:
+        write_csv(
+            pd.DataFrame({"metric": list(FLAG_METRICS), "reference_max": [ref_max[m] for m in FLAG_METRICS]}),
+            out / "source_reference-quality-max.csv",
+        )
+    else:
+        LOG.info("no inputs.reference_dir: quality flags against the reference recordings are skipped")
     n_plots = 0
     if plots:
         from .figures.bars import plot_phase_bars
@@ -170,7 +227,7 @@ def run_phase(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots: 
         inputs=dict(reference=len(ref), targets=len(rows)),
         outputs=dict(rows=len(rows), plots=n_plots, no_head_phase=int(table.head_on_min.isna().sum())),
         started=started,
-        extra=dict(fps_check=fps_rec),
+        extra=dict(fps_check=fps_rec, hmm=models.manifest()),
     )
     return table
 
@@ -191,9 +248,9 @@ def run_screen(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots:
     started = _dt.datetime.now()
     out = prepare_step_dir(out_dir, overwrite)
     fps_rec = require_fps_check(cfg, out, "screen")
-    ref = load_reference(cfg)
-    model = fit_reference(ref, cfg)
-    model.save(out / "phase_model.json")
+    models = PhaseModels(cfg)
+    model = models.full
+    models.save_full(out / "phase_model.json")
     sets = {s.tag: list_coord_files(s.dir, cfg.inputs.coord_glob, cfg.inputs.name_separator) for s in cfg.inputs.coord_sets}
     animals = cfg.inputs.screen_animals or sorted(sets[cfg.inputs.coord_sets[0].tag])
     if plots:
@@ -210,7 +267,7 @@ def run_screen(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots:
             rec = load_recording(name, tag, files[name], cfg)
             res = segment(rec.sig, model, cfg.phase.bin_s, cfg.offset_refinement)
             fam, it = split_tag(tag)
-            row = phase_row(rec, res)
+            row = phase_row(rec, res, model)
             row.update(tag=tag, family=fam, iteration=it, set_order=k, is_default=(k == 0))
             rows.append(row)
             if plots:
@@ -222,9 +279,9 @@ def run_screen(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots:
         out,
         "screen",
         config_to_dict(cfg),
-        inputs=dict(reference=len(ref), animals=len(animals), coord_sets=len(sets)),
+        inputs=dict(reference=len(models.ref), animals=len(animals), coord_sets=len(sets)),
         outputs=dict(rows=len(table)),
         started=started,
-        extra=dict(fps_check=fps_rec),
+        extra=dict(fps_check=fps_rec, hmm=models.manifest()),
     )
     return table

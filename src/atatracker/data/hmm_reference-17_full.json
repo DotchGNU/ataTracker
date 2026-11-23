@@ -1,0 +1,121 @@
+{
+ "kind": "full",
+ "left_out": null,
+ "n_components": 4,
+ "n_features": 2,
+ "states": [
+  "pre",
+  "chest",
+  "head",
+  "post"
+ ],
+ "signals": [
+  "chest_count_per_s",
+  "head_count_per_s"
+ ],
+ "params": {
+  "startprob": [
+   1.0,
+   1.9120862746783414e-81,
+   0.0,
+   0.0
+  ],
+  "transmat": [
+   [
+    0.9549147050270538,
+    0.04508529497294618,
+    0.0,
+    0.0
+   ],
+   [
+    0.0,
+    0.9867437893995542,
+    0.01325621060044576,
+    0.0
+   ],
+   [
+    0.0,
+    0.0,
+    0.9914762393491418,
+    0.008523760650858244
+   ],
+   [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  ],
+  "lambdas": [
+   [
+    0.07599012864253506,
+    0.0026541592151795687
+   ],
+   [
+    2.9476835139776547,
+    0.007064765473077711
+   ],
+   [
+    0.5857214889750477,
+    0.2883155118524683
+   ],
+   [
+    0.00851720977748946,
+    0.0025182531966939244
+   ]
+  ]
+ },
+ "params_hash": "9a9100d891fa273c",
+ "training_animals": [
+  "ref01",
+  "ref02",
+  "ref03",
+  "ref04",
+  "ref05",
+  "ref06",
+  "ref07",
+  "ref08",
+  "ref09",
+  "ref10",
+  "ref11",
+  "ref12",
+  "ref13",
+  "ref14",
+  "ref15",
+  "ref16",
+  "ref17"
+ ],
+ "n_training": 17,
+ "config": {
+  "SIG_CHEST": "y",
+  "SIG_HEAD": "max",
+  "THR": 0.5,
+  "NORM_HI_PCT": 99.9,
+  "LIK_MIN": 0.9,
+  "DIST_CHEST": 4,
+  "DIST_HEAD": 24,
+  "BIN_S": 1.0,
+  "FPS": 29.97002997002997
+ },
+ "fit_settings": {
+  "iter": 50,
+  "tol": 0.0001,
+  "seed": 0,
+  "params": "stl",
+  "init_params": "",
+  "start_prob": [
+   0.6,
+   0.4,
+   0,
+   0
+  ],
+  "init_stay": 0.99,
+  "init_advance": 0.01,
+  "lambda_floor": 0.01,
+  "init_paths": "atatracker.phase.init_path (rule-based)"
+ },
+ "converged": true,
+ "n_iter_run": 9,
+ "hmmlearn_version": "0.3.3",
+ "numpy_version": "2.4.6"
+}

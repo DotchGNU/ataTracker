@@ -44,3 +44,4 @@ labeled-data/
 snapshot-*
 output/
 results/
+!src/atatracker/data/*.json

@@ -79,13 +79,38 @@ def init_path(sig: Signals, cfg: PhaseConfig) -> np.ndarray:
 
 @dataclass
 class PhaseModel:
-    """Fitted Poisson HMM parameters (JSON serialisable)."""
+    """Poisson HMM parameters.
+
+    Attributes
+    ----------
+    startprob : ndarray
+        ``(4,)`` start probabilities.
+    transmat : ndarray
+        ``(4, 4)`` transition probabilities per bin.
+    lambdas : ndarray
+        ``(4, 2)`` Poisson rates (chest and head peaks per bin) of each state.
+    n_train : int
+        Number of training recordings.
+    train_names : list of str
+        Training recordings.
+    converged, n_iter : bool and int, optional
+        EM convergence and iterations (fitted models).
+    left_out : str, optional
+        Recording left out of the training set (leave-one-out models).
+    """
 
     startprob: np.ndarray
     transmat: np.ndarray
     lambdas: np.ndarray
     n_train: int
     train_names: list[str]
+    converged: bool | None = None
+    n_iter: int | None = None
+    left_out: str | None = None
+
+    def params(self) -> dict[str, list]:
+        """Parameters as plain lists (the ``params`` entry of a model file)."""
+        return dict(startprob=self.startprob.tolist(), transmat=self.transmat.tolist(), lambdas=self.lambdas.tolist())
 
     def to_hmm(self) -> Any:
         """Return an ``hmmlearn`` ``PoissonHMM`` with these parameters."""
@@ -102,22 +127,20 @@ class PhaseModel:
         """Viterbi state path of a ``(T, 2)`` count array."""
         return self.to_hmm().predict(counts)
 
-    def save(self, path: str | Path) -> None:
-        """Write the parameters as JSON (floats are written with full precision)."""
-        doc = dict(
-            states=list(STATE_NAMES),
-            startprob=self.startprob.tolist(),
-            transmat=self.transmat.tolist(),
-            lambdas=self.lambdas.tolist(),
-            n_train=self.n_train,
-            train_names=self.train_names,
-        )
-        Path(path).write_text(json.dumps(doc, indent=1), encoding="utf-8")
+    def save(self, path: str | Path, cfg: Any) -> None:
+        """Write a model file (format: :mod:`atatracker.hmmstore`); ``cfg`` is the :class:`~atatracker.config.Config` used."""
+        from .hmmstore import save_model
+
+        save_model(self, path, cfg, self.left_out)
 
     @classmethod
     def load(cls, path: str | Path) -> PhaseModel:
-        """Read parameters written by :meth:`save`."""
+        """Read a model file, or a ``phase_model.json`` of version 0.1 (without configuration check)."""
         d = json.loads(Path(path).read_text(encoding="utf-8"))
+        if "params" in d:
+            from .hmmstore import model_from_record, read_record
+
+            return model_from_record(read_record(path))
         return cls(np.array(d["startprob"]), np.array(d["transmat"]), np.array(d["lambdas"]), d["n_train"], d["train_names"])
 
 
@@ -162,7 +185,15 @@ def fit_model(train: dict[str, Signals], cfg: PhaseConfig) -> PhaseModel:
     with contextlib.redirect_stdout(io.StringIO()):
         hmm.fit(np.vstack(xs), lengths=[len(x) for x in xs])
     LOG.debug("HMM fitted on %d recordings, converged=%s", len(xs), hmm.monitor_.converged)
-    return PhaseModel(hmm.startprob_.copy(), hmm.transmat_.copy(), hmm.lambdas_.copy(), len(names), names)
+    return PhaseModel(
+        hmm.startprob_.copy(),
+        hmm.transmat_.copy(),
+        hmm.lambdas_.copy(),
+        len(names),
+        names,
+        converged=bool(hmm.monitor_.converged),
+        n_iter=int(hmm.monitor_.iter),
+    )
 
 
 def state_onsets(path: np.ndarray, bin_s: float = 1.0) -> list[float]:

@@ -25,7 +25,7 @@ def test_model_json_round_trip(config_dict, tmp_path):
     cfg = config_from_dict(config_dict)
     ref = load_reference(cfg)
     m = fit_model({n: r.sig for n, r in ref.items()}, cfg.phase)
-    m.save(tmp_path / "m.json")
+    m.save(tmp_path / "m.json", cfg)
     m2 = PhaseModel.load(tmp_path / "m.json")
     x = next(iter(ref.values())).sig.counts
     assert np.array_equal(m.predict(x), m2.predict(x))

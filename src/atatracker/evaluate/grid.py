@@ -51,6 +51,8 @@ def run_grid(cfg: Config, out_dir: str | Path, overwrite: bool = False) -> pd.Da
     if len(tags) != 2:
         raise ValueError("grid.compare_sets must name two coordinate sets")
     dirs = {s.tag: s.dir for s in cfg.inputs.coord_sets}
+    if not cfg.inputs.reference_dir:
+        raise ValueError("ata evaluate grid refits the HMM for every combination: set inputs.reference_dir")
     ref_files = list_coord_files(
         cfg.inputs.reference_dir, cfg.inputs.reference_glob or cfg.inputs.coord_glob, cfg.inputs.name_separator
     )

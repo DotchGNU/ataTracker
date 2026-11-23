@@ -155,10 +155,18 @@ def cmd_check_fps(a: argparse.Namespace) -> int:
     return 0
 
 
+def _phase_cfg(a: argparse.Namespace):
+    cfg = _cfg(a)
+    if a.refit:
+        cfg.phase.refit = True
+    return cfg
+
+
 def cmd_phase(a: argparse.Namespace) -> int:
     from .pipeline import run_phase
 
-    t = run_phase(_cfg(a), a.out or Path(_cfg(a).output_dir) / "phase", overwrite=a.overwrite, plots=not a.no_plots)
+    cfg = _phase_cfg(a)
+    t = run_phase(cfg, a.out or Path(cfg.output_dir) / "phase", overwrite=a.overwrite, plots=not a.no_plots)
     LOG.info("%d animals, %d without a head phase", len(t), int(t.head_on_min.isna().sum()))
     return 0
 
@@ -166,8 +174,24 @@ def cmd_phase(a: argparse.Namespace) -> int:
 def cmd_screen(a: argparse.Namespace) -> int:
     from .pipeline import run_screen
 
-    t = run_screen(_cfg(a), a.out or Path(_cfg(a).output_dir) / "checkpoint-screen", overwrite=a.overwrite, plots=not a.no_plots)
+    cfg = _phase_cfg(a)
+    t = run_screen(cfg, a.out or Path(cfg.output_dir) / "checkpoint-screen", overwrite=a.overwrite, plots=not a.no_plots)
     LOG.info("%d animal x checkpoint rows", len(t))
+    return 0
+
+
+def cmd_hmm(a: argparse.Namespace) -> int:
+    from . import hmmstore
+
+    cfg = _cfg(a)
+    if a.action == "fit":
+        idx = hmmstore.run_hmm_fit(
+            cfg, a.out or Path(cfg.output_dir) / "hmm-model", overwrite=a.overwrite, leave_one_out=not a.no_loo
+        )
+        LOG.info("%d model file(s) written; full model hash %s", len(idx), idx.params_hash.iloc[0])
+    else:
+        t = hmmstore.describe(cfg)
+        LOG.info("stored HMM matches the configuration:\n%s", t.to_string(index=False))
     return 0
 
 
@@ -306,13 +330,20 @@ def parser() -> argparse.ArgumentParser:
         "--dlc-input", action="append", help="folder of DeepLabCut input videos (repeatable; default fps_check.dlc_input_dirs)"
     )
 
-    p = add("phase", cmd_phase, "phase segmentation of every target animal (one checkpoint per animal)")
+    p = add("phase", cmd_phase, "phase segmentation and offset refinement of every target animal (one checkpoint per animal)")
     p.add_argument("--out")
     p.add_argument("--no-plots", action="store_true")
+    p.add_argument("--refit", action="store_true", help="fit the HMM on inputs.reference_dir instead of loading phase.model_file")
 
-    p = add("screen", cmd_screen, "checkpoint screen: onset / end / metrics / plot for every animal x checkpoint")
+    p = add("screen", cmd_screen, "checkpoint screen: onset / offset / metrics / plot for every animal x checkpoint")
     p.add_argument("--out")
     p.add_argument("--no-plots", action="store_true")
+    p.add_argument("--refit", action="store_true", help="fit the HMM on inputs.reference_dir instead of loading phase.model_file")
+
+    p = add("hmm", cmd_hmm, "fit and export the HMM (full + leave-one-out model files), or check the stored model")
+    p.add_argument("action", choices=["fit", "check"])
+    p.add_argument("--out", help="model folder to write (fit)")
+    p.add_argument("--no-loo", action="store_true", help="write the full model only (fit)")
 
     p = add("review", cmd_review, "review pages (checkpoint picker, twitching review, video viewer)")
     p.add_argument("action", choices=["picker", "choices", "review", "viewer"])

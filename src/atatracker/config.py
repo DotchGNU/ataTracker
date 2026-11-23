@@ -74,8 +74,15 @@ class FpsCheckConfig:
 
 @dataclass
 class PhaseConfig:
-    """Four-state left-to-right Poisson HMM (pre -> chest -> head -> post)."""
+    """Four-state left-to-right Poisson HMM (pre -> chest -> head -> post).
 
+    By default the stored model ``model_file`` is loaded (``builtin`` = the reference model shipped
+    with the package); ``refit`` fits a model on ``inputs.reference_dir`` instead.
+    """
+
+    model_file: str = "builtin"
+    loo_dir: str | None = None
+    refit: bool = False
     bin_s: float = 1.0
     hmm_n_iter: int = 50
     hmm_tol: float = 1e-4
@@ -140,7 +147,7 @@ class CoordSet:
 class InputConfig:
     """Where the coordinate tables are."""
 
-    reference_dir: str = "/path/to/reference_coords"
+    reference_dir: str | None = None
     coord_sets: list[CoordSet] = field(default_factory=lambda: [CoordSet()])
     coord_glob: str = "*DLC_*.csv"
     reference_glob: str | None = None

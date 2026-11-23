@@ -18,7 +18,10 @@ fps_check:   # frame-rate check of the videos before the analysis (ata check-fps
   patterns: ['*.mp4', '*.MP4', '*.avi', '*.AVI', '*.mov', '*.MOV']
   tolerance_rel: 0.005   # largest accepted |rate / signal.fps - 1| for r_frame_rate, avg_frame_rate and nb_frames / duration
   count_mode: packets   # frame count when the container has no nb_frames: packets (fast) | decode (exact, slow)
-phase:   # 4-state left-to-right Poisson HMM pre -> chest -> head -> post (docs/method.md section 3)
+phase:   # 4-state left-to-right Poisson HMM pre -> chest -> head -> post (docs/method.md section 3, docs/hmm-model.md)
+  model_file: builtin   # stored full model (JSON) applied to every recording; builtin = reference model shipped with the package
+  loo_dir: null   # folder of the stored leave-one-out models (null = folder of model_file)
+  refit: false   # true = fit the HMM on inputs.reference_dir instead of loading model_file (also: --refit); hmm_n_iter ... rule_max_s are used only when fitting
   bin_s: 1.0   # count bin width (s)
   hmm_n_iter: 50   # maximum EM iterations
   hmm_tol: 0.0001   # EM convergence tolerance (log-likelihood gain)
@@ -32,7 +35,7 @@ phase:   # 4-state left-to-right Poisson HMM pre -> chest -> head -> post (docs/
   chest_onset_window_s: 5.0   # window of that rule (s)
   rule_bin_s: 10.0   # initial paths: bin of the head-onset rule (s)
   rule_max_s: 300.0   # initial paths: last bin edge of the rule (s)
-  leave_one_out: true   # a target that is also a reference recording is segmented by a model trained without it
+  leave_one_out: true   # a target that is a training recording of the HMM is segmented by a model trained without it
 offset_refinement:   # offset (last twitching) = last time the rolling max of chest_weight * chest + head_weight * head >= threshold (docs/method.md section 4)
   chest_weight: 0.25   # weight of the chest amplitude (0 with head_weight 1 and window_s 5 = the head-only rule of version 0.1)
   head_weight: 0.75   # weight of the head amplitude
@@ -50,7 +53,7 @@ quality:   # label-free tracking metrics (docs/method.md section 6)
   likelihood_low: 0.5   # likelihood counted as low
   end_vs_manual_flag_s: 60.0   # flag |offset - manual last twitching| above this (s)
 inputs:   # coordinate tables (DeepLabCut csv)
-  reference_dir: /path/to/reference_coords   # recordings that train the HMM
+  reference_dir: null   # coordinate files of the HMM training recordings: needed to fit (phase.refit, ata hmm fit); optional otherwise (quality-flag thresholds)
   coord_sets:   # one entry per checkpoint; the first set is the default for every animal
   - {tag: default, dir: /path/to/coords}
   coord_glob: '*DLC_*.csv'   # file pattern of the coordinate files
