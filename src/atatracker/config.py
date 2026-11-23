@@ -61,6 +61,18 @@ class SignalConfig:
 
 
 @dataclass
+class FpsCheckConfig:
+    """Frame-rate check of the videos before the analysis (``ata check-fps``, docs/method.md section 1)."""
+
+    require: bool = True
+    original_dirs: list[str] = field(default_factory=list)
+    dlc_input_dirs: list[str] = field(default_factory=list)
+    patterns: list[str] = field(default_factory=lambda: ["*.mp4", "*.MP4", "*.avi", "*.AVI", "*.mov", "*.MOV"])
+    tolerance_rel: float = 0.005
+    count_mode: str = "packets"
+
+
+@dataclass
 class PhaseConfig:
     """Four-state left-to-right Poisson HMM (pre -> chest -> head -> post)."""
 
@@ -271,6 +283,7 @@ class Config:
 
     output_dir: str = "/path/to/output"
     signal: SignalConfig = field(default_factory=SignalConfig)
+    fps_check: FpsCheckConfig = field(default_factory=FpsCheckConfig)
     phase: PhaseConfig = field(default_factory=PhaseConfig)
     offset_refinement: OffsetRefinementConfig = field(default_factory=OffsetRefinementConfig)
     display: DisplayConfig = field(default_factory=DisplayConfig)
@@ -294,6 +307,10 @@ class Config:
             raise ValueError("offset_refinement.chest_weight and head_weight must be >= 0 and not both 0")
         if e.window_s <= 0:
             raise ValueError("offset_refinement.window_s must be > 0")
+        if self.fps_check.tolerance_rel <= 0:
+            raise ValueError("fps_check.tolerance_rel must be > 0")
+        if self.fps_check.count_mode not in ("packets", "decode"):
+            raise ValueError("fps_check.count_mode must be packets or decode")
         if not self.inputs.coord_sets:
             raise ValueError("inputs.coord_sets must list at least one coordinate set")
 

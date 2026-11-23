@@ -14,6 +14,7 @@ import pandas as pd
 from .common import list_coord_files, load_coords, prepare_step_dir, write_csv, write_manifest
 from .config import Config, config_to_dict
 from .evaluate.metrics import FLAG_METRICS, flag_against_reference, quality_metrics
+from .fpscheck import require_fps_check
 from .phase import PhaseModel, PhaseResult, fit_model, segment
 from .signal import Signals, compute_signals
 
@@ -107,6 +108,7 @@ def run_phase(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots: 
     """
     started = _dt.datetime.now()
     out = prepare_step_dir(out_dir, overwrite)
+    fps_rec = require_fps_check(cfg, out, "phase")
     ref = load_reference(cfg)
     model = fit_reference(ref, cfg)
     model.save(out / "phase_model.json")
@@ -168,6 +170,7 @@ def run_phase(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots: 
         inputs=dict(reference=len(ref), targets=len(rows)),
         outputs=dict(rows=len(rows), plots=n_plots, no_head_phase=int(table.head_on_min.isna().sum())),
         started=started,
+        extra=dict(fps_check=fps_rec),
     )
     return table
 
@@ -187,6 +190,7 @@ def run_screen(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots:
     """
     started = _dt.datetime.now()
     out = prepare_step_dir(out_dir, overwrite)
+    fps_rec = require_fps_check(cfg, out, "screen")
     ref = load_reference(cfg)
     model = fit_reference(ref, cfg)
     model.save(out / "phase_model.json")
@@ -221,5 +225,6 @@ def run_screen(cfg: Config, out_dir: str | Path, overwrite: bool = False, plots:
         inputs=dict(reference=len(ref), animals=len(animals), coord_sets=len(sets)),
         outputs=dict(rows=len(table)),
         started=started,
+        extra=dict(fps_check=fps_rec),
     )
     return table

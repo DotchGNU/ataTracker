@@ -71,6 +71,7 @@ def config_dict(coord_dirs: dict[str, Path]) -> dict:
     return dict(
         output_dir=str(coord_dirs["root"] / "out"),
         signal=dict(fps=FPS),
+        fps_check=dict(require=False),
         inputs=dict(
             reference_dir=str(coord_dirs["reference"]), coord_sets=[dict(tag="model-1k", dir=str(coord_dirs["targets"]))]
         ),

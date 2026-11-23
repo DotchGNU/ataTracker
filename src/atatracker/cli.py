@@ -140,6 +140,21 @@ def cmd_dlc(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_check_fps(a: argparse.Namespace) -> int:
+    from .fpscheck import run_check_fps
+
+    cfg = _cfg(a)
+    t = run_check_fps(
+        cfg,
+        a.out or Path(cfg.output_dir) / "fps-check",
+        overwrite=a.overwrite,
+        original_dirs=a.original or None,
+        dlc_input_dirs=a.dlc_input or None,
+    )
+    LOG.info("frame-rate check passed for %d video(s)", len(t))
+    return 0
+
+
 def cmd_phase(a: argparse.Namespace) -> int:
     from .pipeline import run_phase
 
@@ -283,6 +298,13 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--only-videos", default="", help="comma-separated videos to use (per-animal fine-tune)")
     p.add_argument("--new-only", action="store_true", help="train on the new labels only")
     p.add_argument("--dry-run", action="store_true")
+
+    p = add("check-fps", cmd_check_fps, "frame-rate check of original and DeepLabCut input videos (ffprobe); stops on deviation")
+    p.add_argument("--out")
+    p.add_argument("--original", action="append", help="folder of original videos (repeatable; default fps_check.original_dirs)")
+    p.add_argument(
+        "--dlc-input", action="append", help="folder of DeepLabCut input videos (repeatable; default fps_check.dlc_input_dirs)"
+    )
 
     p = add("phase", cmd_phase, "phase segmentation of every target animal (one checkpoint per animal)")
     p.add_argument("--out")

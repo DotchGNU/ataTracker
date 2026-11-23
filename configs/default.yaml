@@ -11,6 +11,13 @@ signal:   # per-frame motion signal and peak calling (docs/method.md section 2)
   peak_threshold: 0.5   # minimum normalised peak height
   peak_distance_chest_frames: 4   # minimum distance between chest peaks (frames)
   peak_distance_head_frames: 24   # minimum distance between head peaks (frames)
+fps_check:   # frame-rate check of the videos before the analysis (ata check-fps; docs/method.md section 1)
+  require: true   # ata phase / ata screen run the check first and stop on any deviation; false = skip (not recommended)
+  original_dirs: []   # folders of the original recordings
+  dlc_input_dirs: []   # folders of the videos DeepLabCut analysed (crops, re-encoded copies)
+  patterns: ['*.mp4', '*.MP4', '*.avi', '*.AVI', '*.mov', '*.MOV']
+  tolerance_rel: 0.005   # largest accepted |rate / signal.fps - 1| for r_frame_rate, avg_frame_rate and nb_frames / duration
+  count_mode: packets   # frame count when the container has no nb_frames: packets (fast) | decode (exact, slow)
 phase:   # 4-state left-to-right Poisson HMM pre -> chest -> head -> post (docs/method.md section 3)
   bin_s: 1.0   # count bin width (s)
   hmm_n_iter: 50   # maximum EM iterations
@@ -89,7 +96,7 @@ crop:   # raw video -> fixed-size crops (ffmpeg)
   crop_w: 925   # minimum crop width in raw px (keeps the pixel scale across batches)
   crf: 18
   ffmpeg: ffmpeg
-  ffprobe: ffprobe
+  ffprobe: ffprobe   # also used by the frame-rate check (fps_check)
   server_port: 8765
   url_path_map: {}   # rewrite path prefixes in file URLs, e.g. {"/data/": "D:/data/"}
   detect_fps: 3.0
